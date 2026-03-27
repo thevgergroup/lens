@@ -1,0 +1,19 @@
+{
+  "name": "lens-ai-image-detector",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "bash tests/integration/run.sh",
+    "test:all": "bash tests/run-all.sh",
+    "fixture:serve": "npx serve tests/fixtures -l 3456 --cors --no-clipboard",
+    "fixture:download": "node tests/fixtures/download-fixtures.js"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "serve": "^14.0.0"
+  }
+}

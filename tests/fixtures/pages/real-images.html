@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fixture: Real Images (Control)</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+    figure { margin: 0; }
+    figcaption { font-size: 11px; margin-top: 4px; color: #aaa; max-width: 300px; }
+    img { display: block; width: 300px; height: 220px; object-fit: cover; }
+  </style>
+</head>
+<body>
+  <h1>Fixture: Real Photographs (Control Group)</h1>
+  <p>All images on this page are real photographs. The extension should NOT flag them as AI-generated.</p>
+  <div class="grid">
+    <figure>
+      <img src="../images/real/crater-lake.jpg" alt="Crater Lake photograph">
+      <figcaption>Crater Lake (real photo, C2PA Lightroom) — expect: clean/unlikely</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/real/car-photo.jpg" alt="Car photograph">
+      <figcaption>Car photo (real, C2PA Photoshop) — expect: clean/unlikely</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/real/cloudscape.jpg" alt="Cloudscape">
+      <figcaption>Cloudscape (real, C2PA signed) — expect: clean/unlikely</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/real/ant-photo.jpg" alt="Macro photograph of an ant">
+      <figcaption>Ant macro photo (Wikimedia CC) — expect: clean</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/real/lena.png" alt="Lena standard test image">
+      <figcaption>Lena (classic test image, real photo) — expect: clean</figcaption>
+    </figure>
+  </div>
+</body>
+</html>

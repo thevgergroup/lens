@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fixture: URL Heuristics (L1)</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+    figure { margin: 0; }
+    figcaption { font-size: 11px; margin-top: 4px; color: #aaa; max-width: 300px; word-break: break-all; }
+    img { display: block; width: 300px; height: 200px; object-fit: cover; background: #333; }
+  </style>
+</head>
+<body>
+  <h1>Fixture: URL Heuristics Test (Layer 1)</h1>
+  <p>Tests that the URL/hostname heuristic layer fires correctly without needing image bytes.</p>
+
+  <div class="grid">
+    <!--
+      These use real image bytes from fixtures but are served under AI-pattern paths.
+      The test server rewrites /ai-url-patterns/* to serve from images/ai/*.
+      Layer 1 should detect these from URL alone and bail early.
+    -->
+
+    <figure>
+      <img src="../images/ai/diffusiondb-000.png?model=sdxl"
+           alt="image"
+           data-expected-signal="url"
+           data-expected-level="definite">
+      <figcaption>URL has ?model=sdxl param</figcaption>
+    </figure>
+
+    <figure>
+      <img src="../images/ai/DALL-E-sample.png"
+           alt="image"
+           data-expected-signal="url"
+           data-expected-level="definite">
+      <figcaption>Filename starts with DALL-E</figcaption>
+    </figure>
+
+    <figure>
+      <img src="../images/ai/MJ-abc123def456.png"
+           alt="image"
+           data-expected-signal="url"
+           data-expected-level="definite">
+      <figcaption>Filename starts with MJ-</figcaption>
+    </figure>
+
+    <figure>
+      <img src="../images/ai/diffusiondb-000.png"
+           alt="AI generated image"
+           data-expected-signal="dom"
+           data-expected-level="likely">
+      <figcaption>alt text contains "AI generated"</figcaption>
+    </figure>
+  </div>
+
+  <div id="lens-test-results" data-page="url-heuristics" data-total-images="4"></div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fixture: AI Images</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+    figure { margin: 0; }
+    figcaption { font-size: 11px; margin-top: 4px; color: #aaa; max-width: 300px; }
+    img { display: block; width: 300px; height: 220px; object-fit: cover; }
+  </style>
+</head>
+<body>
+  <h1>Fixture: Known AI-Generated Images</h1>
+  <p>All images on this page are AI-generated. The extension should flag all of them.</p>
+  <div class="grid">
+    <figure>
+      <img src="../images/ai/chatgpt-image.png" alt="AI generated image">
+      <figcaption>ChatGPT generated (C2PA-signed) — expect: definite</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/ai/firefly-tabby-cat.jpg" alt="Adobe Firefly generated cat">
+      <figcaption>Adobe Firefly (C2PA-signed) — expect: definite</figcaption>
+    </figure>
+  </div>
+</body>
+</html>

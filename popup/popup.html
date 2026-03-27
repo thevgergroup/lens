@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=380, initial-scale=1">
+  <title>Lens — AI Image Detector</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <header class="header">
+    <div class="header__logo">
+      <svg class="header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2.5 12C2.5 7.5 7.5 3 12 3s9.5 4.5 9.5 9-4.5 9-9.5 9S2.5 16.5 2.5 12z"/>
+        <circle cx="12" cy="12" r="3.5"/>
+        <path d="M12 8.5V3M12 21v-4.5M8.5 12H3M21 12h-4.5"/>
+      </svg>
+      <span class="header__wordmark">LENS</span>
+    </div>
+    <div class="header__controls">
+      <label class="toggle" title="Enable/disable Lens">
+        <input type="checkbox" id="toggleEnabled" checked>
+        <span class="toggle__track"></span>
+      </label>
+    </div>
+  </header>
+
+  <!-- Summary bar -->
+  <section class="summary" id="summary" aria-label="Page analysis summary">
+    <div class="summary__stat summary__stat--scanning" id="statScanning">
+      <span class="summary__num" id="numScanning">—</span>
+      <span class="summary__label">Scanning</span>
+    </div>
+    <div class="summary__stat summary__stat--definite" id="statDefinite">
+      <span class="summary__num" id="numDefinite">0</span>
+      <span class="summary__label">AI</span>
+    </div>
+    <div class="summary__stat summary__stat--likely" id="statLikely">
+      <span class="summary__num" id="numLikely">0</span>
+      <span class="summary__label">Likely</span>
+    </div>
+    <div class="summary__stat summary__stat--possible" id="statPossible">
+      <span class="summary__num" id="numPossible">0</span>
+      <span class="summary__label">Possible</span>
+    </div>
+    <div class="summary__stat summary__stat--clean" id="statClean">
+      <span class="summary__num" id="numClean">0</span>
+      <span class="summary__label">Clean</span>
+    </div>
+  </section>
+
+  <!-- Filter tabs -->
+  <nav class="filters" role="tablist" aria-label="Filter results">
+    <button class="filter filter--active" data-filter="flagged" role="tab" aria-selected="true">Flagged</button>
+    <button class="filter" data-filter="all" role="tab" aria-selected="false">All</button>
+    <button class="filter" data-filter="settings" role="tab" aria-selected="false">Settings</button>
+  </nav>
+
+  <!-- Results list -->
+  <main class="results" id="results" role="tabpanel">
+    <div class="results__empty" id="emptyState">
+      <div class="results__empty-icon">◈</div>
+      <div class="results__empty-text">Scanning images on this page…</div>
+    </div>
+    <ul class="results__list" id="resultsList" aria-label="Detected images"></ul>
+  </main>
+
+  <!-- Settings panel -->
+  <section class="settings-panel" id="settingsPanel" hidden aria-label="Settings">
+    <div class="setting">
+      <label class="setting__label" for="minConfidence">Show badges for</label>
+      <select class="setting__select" id="minConfidence">
+        <option value="definite">Definite AI only (90%+)</option>
+        <option value="likely">Likely AI and above (70%+)</option>
+        <option value="possible" selected>Possible AI and above (45%+)</option>
+        <option value="all">All images</option>
+      </select>
+    </div>
+    <div class="setting">
+      <label class="setting__label setting__label--inline" for="hoverOnly">
+        Show badges on hover only
+        <input type="checkbox" id="hoverOnly" class="setting__checkbox">
+      </label>
+    </div>
+    <div class="setting">
+      <label class="setting__label" for="badgePosition">Badge position</label>
+      <select class="setting__select" id="badgePosition">
+        <option value="top-left" selected>Top left</option>
+        <option value="top-right">Top right</option>
+        <option value="bottom-left">Bottom left</option>
+        <option value="bottom-right">Bottom right</option>
+      </select>
+    </div>
+    <div class="setting setting--info">
+      <p class="setting__note">
+        Analysis runs entirely in your browser. No images or data are sent to any server.
+      </p>
+    </div>
+    <div class="setting">
+      <button class="btn btn--ghost" id="clearCache">Clear analysis cache</button>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span class="footer__url" id="footerUrl"></span>
+    <span class="footer__badge" id="footerCacheCount">0 cached</span>
+  </footer>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

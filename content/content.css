@@ -1,0 +1,218 @@
+/* LENS — Badge Styles
+   Injected into every page. Uses specific class names + high specificity
+   to avoid conflicts with host page styles.
+   Respects prefers-reduced-motion and prefers-color-scheme.
+*/
+
+/* ── Wrapper ────────────────────────────────────────────────────────────── */
+
+.lens-wrapper {
+  position: relative !important;
+  display: inline-block !important;
+  line-height: 0 !important;
+  isolation: isolate;
+}
+
+/* ── Badge base ─────────────────────────────────────────────────────────── */
+
+.lens-badge {
+  position: absolute !important;
+  top: 6px !important;
+  left: 6px !important;
+  z-index: 2147483647 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 3px 7px 3px 5px !important;
+  border-radius: 4px !important;
+  font-family: 'SF Mono', 'Fira Mono', 'Consolas', monospace !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0.02em !important;
+  color: #fff !important;
+  background-color: var(--badge-color, #888) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.12) inset !important;
+  pointer-events: auto !important;
+  cursor: default !important;
+  user-select: none !important;
+  max-width: calc(100% - 12px) !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+  animation: lens-badge-in 0.18s ease-out both !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+@keyframes lens-badge-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Pending state ──────────────────────────────────────────────────────── */
+
+.lens-badge--pending {
+  width: 8px !important;
+  height: 8px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,0.5) !important;
+  border: 1.5px solid rgba(255,255,255,0.8) !important;
+  animation: lens-pulse 1.2s ease-in-out infinite !important;
+  box-shadow: none !important;
+}
+
+@keyframes lens-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1.1); }
+}
+
+/* ── Level variants ─────────────────────────────────────────────────────── */
+
+.lens-badge--definite  { --badge-color: #E53E3E; }
+.lens-badge--likely    { --badge-color: #DD6B20; }
+.lens-badge--possible  { --badge-color: #B7791F; }
+.lens-badge--unlikely  { --badge-color: #276749; }
+.lens-badge--clean     { --badge-color: #2B6CB0; }
+
+/* ── Badge inner elements ───────────────────────────────────────────────── */
+
+.lens-badge__icon {
+  display: inline-block !important;
+  font-style: normal !important;
+  flex-shrink: 0 !important;
+}
+
+.lens-badge__label {
+  display: inline-block !important;
+  flex-shrink: 1 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.lens-badge__confidence {
+  display: inline-block !important;
+  opacity: 0.75 !important;
+  font-size: 9px !important;
+  flex-shrink: 0 !important;
+}
+
+/* ── Tooltip ────────────────────────────────────────────────────────────── */
+
+.lens-badge__tooltip {
+  display: none !important;
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  left: 0 !important;
+  min-width: 240px !important;
+  max-width: 320px !important;
+  background: #0F1117 !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 6px !important;
+  padding: 10px 12px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+  font-family: 'SF Mono', 'Fira Mono', 'Consolas', monospace !important;
+  font-size: 10px !important;
+  font-weight: 400 !important;
+  line-height: 1.5 !important;
+  color: #E2E8F0 !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  white-space: normal !important;
+  animation: lens-tooltip-in 0.12s ease-out both !important;
+}
+
+@keyframes lens-tooltip-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.lens-badge:hover .lens-badge__tooltip,
+.lens-badge:focus .lens-badge__tooltip {
+  display: block !important;
+}
+
+.lens-badge__tooltip-title {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  margin-bottom: 8px !important;
+  padding-bottom: 6px !important;
+  border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.lens-badge__tooltip-signals {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+.lens-badge__signal {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: flex-start !important;
+}
+
+.lens-badge__signal-type {
+  display: inline-block !important;
+  flex-shrink: 0 !important;
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  color: var(--badge-color, #888) !important;
+  background: rgba(255,255,255,0.07) !important;
+  padding: 1px 4px !important;
+  border-radius: 2px !important;
+  margin-top: 1px !important;
+}
+
+.lens-badge__signal-label {
+  flex: 1 !important;
+  color: #A0AEC0 !important;
+  word-break: break-word !important;
+}
+
+.lens-badge__signal-more {
+  color: #718096 !important;
+  font-style: italic !important;
+  font-size: 9px !important;
+  margin-top: 2px !important;
+}
+
+/* ── Hover-only mode ────────────────────────────────────────────────────── */
+
+.lens-badge--hover-only {
+  opacity: 0 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.lens-wrapper:hover .lens-badge--hover-only {
+  opacity: 1 !important;
+}
+
+/* ── Tooltip edge clamping — flip to right side if overflows left ────────── */
+/* JS handles positioning for complex edge cases */
+
+/* ── Respect prefers-reduced-motion ────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .lens-badge,
+  .lens-badge--pending,
+  .lens-badge__tooltip {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── High contrast mode ──────────────────────────────────────────────────── */
+
+@media (forced-colors: active) {
+  .lens-badge {
+    border: 2px solid ButtonText !important;
+    background: ButtonFace !important;
+    color: ButtonText !important;
+  }
+}

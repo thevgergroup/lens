@@ -1,0 +1,17 @@
+node_modules/
+
+# Chrome for Testing binary (downloaded via npx @puppeteer/browsers install chrome@stable)
+chrome/
+
+# agent-browser persistent Chrome profile (local dev only)
+.browser-profile/
+.lens-profile/
+
+# Downloaded fixture images (regenerate with npm run fixture:download)
+tests/fixtures/images/
+
+# Test screenshots (visual artifacts, not source)
+tests/integration/screenshots/
+
+# Symlink to /tmp/lens-ext (local dev only)
+lens-ext

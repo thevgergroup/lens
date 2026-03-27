@@ -1,0 +1,6 @@
+{
+  "headed": true,
+  "extensions": ["/tmp/lens-ext"],
+  "profile": "/tmp/lens-cft-profile",
+  "executablePath": "/Users/patrick/Projects/thevgergroup/ai-image-detector/chrome/mac_arm-147.0.7727.24/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+}
