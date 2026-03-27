@@ -112,11 +112,53 @@ const FIXTURES = [
     description: 'Real photograph with no C2PA credentials (baseline negative)',
   },
 
-  // ── Real: Wikimedia macro photography (CC BY-SA) ──────────────────────────
+  // ── Real: Wikimedia photographs (varied subjects, CC BY-SA / PD) ─────────
   {
     url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg',
     dest: 'real/ant-photo.jpg',
     description: 'Macro ant photograph (Wikimedia CC BY-SA 3.0)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/2/26/YellowLabradorLooking_new.jpg',
+    dest: 'real/dog-photo.jpg',
+    description: 'Yellow Labrador photograph (Wikimedia CC BY-SA 3.0)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/0/05/Southwest_corner_of_Central_Park%2C_looking_east%2C_NYC.jpg',
+    dest: 'real/city-nyc.jpg',
+    description: 'New York City photograph (Wikimedia CC BY-SA 3.0)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Sunflower_from_Silesia2.jpg',
+    dest: 'real/flower-macro.jpg',
+    description: 'Sunflower macro photograph (Wikimedia CC BY-SA 3.0)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/1/1a/24701-nature-natural-beauty.jpg',
+    dest: 'real/ocean-waves.jpg',
+    description: 'Ocean waves photograph (Wikimedia CC0)',
+  },
+
+  // ── AI: Stable Diffusion / DALL-E (Wikimedia Commons, requires User-Agent) ─
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/4/43/Android_making_a_conclusion_in_2740.png',
+    dest: 'ai/sd-android.png',
+    description: 'Stable Diffusion android figure (Wikimedia CC0)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/0/0e/AI_golem_waiting_for_tasks_and_providing_advice.jpg',
+    dest: 'ai/sd-golem.jpg',
+    description: 'Stable Diffusion AI golem (Wikimedia CC0)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/8/87/A_robot_writing_an_apology_letter.png',
+    dest: 'ai/dalle-robot-letter.png',
+    description: 'DALL-E robot writing a letter (Wikimedia CC BY-SA 4.0)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/4/45/A_lonely_blue_man_curled_up_in_the_fetal_position_floats_in_nothingness.png',
+    dest: 'ai/dalle-blue-man.png',
+    description: 'DALL-E blue man floating (Wikimedia PD)',
   },
 ];
 
@@ -134,7 +176,7 @@ function download(url, destPath) {
     const client = url.startsWith('https') ? https : http;
     const file = fs.createWriteStream(fullPath);
 
-    const request = client.get(url, (response) => {
+    const request = client.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LENS-fixture-downloader/1.0)' } }, (response) => {
       if (response.statusCode === 301 || response.statusCode === 302) {
         file.close();
         fs.unlinkSync(fullPath);
