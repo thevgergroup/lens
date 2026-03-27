@@ -218,6 +218,18 @@ const FIXTURES = [
     description: 'Picsum outdoor scene #200 (Unsplash CC0)',
   },
 
+  // ── Real: Standard test images ────────────────────────────────────────────
+  {
+    url: 'https://picsum.photos/id/29/800/600.jpg',
+    dest: 'real/mountain-landscape.jpg',
+    description: 'Mountain landscape photograph — Picsum id/29 (Unsplash CC0)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/en/7/7d/Lena.png',
+    dest: 'real/lena.png',
+    description: 'Lena standard test image (USC SIPI, widely used in image processing)',
+  },
+
   // ── Real: Wikimedia Commons landmark/nature photos ────────────────────────
   {
     url: 'https://upload.wikimedia.org/wikipedia/commons/0/0c/GoldenGateBridge-001.jpg',
