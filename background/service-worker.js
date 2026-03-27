@@ -230,7 +230,11 @@ async function analyzeImage(url, domSignals) {
 
   // ── LAYER 3: Pixel statistics ───────────────────────────────────────────
   const t3 = Date.now();
-  const pixelResult = analyzePixelStatistics(imageData);
+  // JPEG/WebP lossy encoding destroys LSB randomness via DCT quantization —
+  // skip LSB entropy check on lossy-compressed images to avoid false positives.
+  const mime = sniffMimeType(arrayBuffer);
+  const isLossy = mime === 'image/jpeg' || mime === 'image/webp';
+  const pixelResult = analyzePixelStatistics(imageData, isLossy);
   timing.l3 = Date.now() - t3;
   allSignals.push(...pixelResult.signals);
   maxScore = Math.max(maxScore, pixelResult.score);
