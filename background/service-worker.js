@@ -78,7 +78,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     analyzeImage(url, domSignals || {})
       .then(result => {
         cacheResult(url, result);
-        console.log(`[Lens SW] Analysis done: ${shortUrl} → ${result.interpretation?.level} (${result.score})`);
+        logResult(shortUrl, result);
         sendResponse({ result, fromCache: false });
       })
       .catch(err => {
@@ -278,6 +278,36 @@ function buildStats(urls) {
     else stats.clean++;
   }
   return stats;
+}
+
+// ---------------------------------------------------------------------------
+// Debug logging
+// ---------------------------------------------------------------------------
+
+const LAYER_NAMES = { url: 'L1 URL', exif: 'L2 EXIF', xmp: 'L2 XMP', c2pa: 'L2 C2PA',
+                      iptc: 'L2 IPTC', 'png-meta': 'L2 PNG', dom: 'DOM', pixel: 'L3 Pixel', fft: 'L4 FFT' };
+
+function logResult(shortUrl, result) {
+  const { interpretation, score, signals, layersCompleted, timing, error } = result;
+  const level = interpretation?.level ?? '?';
+  const timingStr = Object.entries(timing || {}).map(([k, v]) => `${k}:${v}ms`).join(' ');
+
+  if (signals && signals.length > 0) {
+    const signalLines = signals
+      .map(s => `      [${(LAYER_NAMES[s.type] || s.type).padEnd(8)}] ${s.label}  (weight: ${s.weight})`)
+      .join('\n');
+    console.log(
+      `[Lens SW] ✦ ${shortUrl}\n` +
+      `      verdict: ${level.toUpperCase()}  score: ${score}  layers: ${layersCompleted}  ${timingStr}\n` +
+      `      signals (${signals.length}):\n${signalLines}` +
+      (error ? `\n      ⚠ error: ${error}` : '')
+    );
+  } else {
+    console.log(
+      `[Lens SW] ✦ ${shortUrl} → ${level.toUpperCase()}  score: ${score}  layers: ${layersCompleted}  ${timingStr}  (no signals)` +
+      (error ? `  ⚠ ${error}` : '')
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

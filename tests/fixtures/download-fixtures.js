@@ -24,12 +24,17 @@ const IMAGES_DIR = path.join(__dirname, 'images');
 
 const C2PA_BASE = 'https://contentauth.github.io/example-assets/images';
 
+const SD_BASE    = 'https://raw.githubusercontent.com/CompVis/stable-diffusion/main/assets/stable-samples';
+const FLUX_BASE  = 'https://raw.githubusercontent.com/black-forest-labs/flux/main/assets';
+const SDXL_BASE  = 'https://raw.githubusercontent.com/Stability-AI/generative-models/main/assets';
+const MSFT_BASE  = 'https://raw.githubusercontent.com/microsoft/c2pa-extension-validator/main/test/media';
+
 const FIXTURES = [
-  // AI-generated images with C2PA provenance (high confidence ground truth)
+  // ── AI: C2PA provenance — GPT-4o / Adobe Firefly ─────────────────────────
   {
     url: `${C2PA_BASE}/ChatGPT_Image.png`,
     dest: 'ai/chatgpt-image.png',
-    description: 'ChatGPT generated image with C2PA content credentials',
+    description: 'ChatGPT/GPT-4o generated image with C2PA content credentials',
   },
   {
     url: `${C2PA_BASE}/Firefly_tabby_cat.jpg`,
@@ -37,7 +42,55 @@ const FIXTURES = [
     description: 'Adobe Firefly generated cat with C2PA content credentials',
   },
 
-  // Real photographs with C2PA provenance (true negatives)
+  // ── AI: C2PA provenance — Bing Image Creator / DALL-E ────────────────────
+  {
+    url: `${MSFT_BASE}/bing_creator_cloud_surfing_puppy.jpg`,
+    dest: 'ai/bing-creator-puppy.jpg',
+    description: 'Bing Image Creator (DALL-E based) with C2PA credentials',
+  },
+  {
+    url: `${MSFT_BASE}/DALL-E_cloud_surfing_puppy.webp`,
+    dest: 'ai/dalle-puppy.webp',
+    description: 'DALL-E generated image with C2PA credentials',
+  },
+
+  // ── AI: Stable Diffusion official samples (CompVis repo) ─────────────────
+  {
+    url: `${SD_BASE}/txt2img/000002025.png`,
+    dest: 'ai/sd-txt2img-01.png',
+    description: 'Stable Diffusion txt2img sample (CompVis official)',
+  },
+  {
+    url: `${SD_BASE}/img2img/mountains-1.png`,
+    dest: 'ai/sd-img2img-mountains.png',
+    description: 'Stable Diffusion img2img mountains (CompVis official)',
+  },
+
+  // ── AI: FLUX official samples (Black Forest Labs) ─────────────────────────
+  {
+    url: `${FLUX_BASE}/grid.jpg`,
+    dest: 'ai/flux-grid.jpg',
+    description: 'FLUX.1-dev sample grid (Black Forest Labs official)',
+  },
+  {
+    url: `${FLUX_BASE}/schnell_grid.jpg`,
+    dest: 'ai/flux-schnell-grid.jpg',
+    description: 'FLUX.1-schnell sample grid (Black Forest Labs official)',
+  },
+
+  // ── AI: SDXL official samples (Stability AI) ─────────────────────────────
+  {
+    url: `${SDXL_BASE}/000.jpg`,
+    dest: 'ai/sdxl-sample-01.jpg',
+    description: 'SDXL generated sample (Stability AI official)',
+  },
+  {
+    url: `${SDXL_BASE}/test_image.png`,
+    dest: 'ai/sdxl-test.png',
+    description: 'SDXL test image (Stability AI official)',
+  },
+
+  // ── Real: C2PA provenance — true negatives ────────────────────────────────
   {
     url: `${C2PA_BASE}/crater-lake-cr.jpg`,
     dest: 'real/crater-lake.jpg',
@@ -52,6 +105,18 @@ const FIXTURES = [
     url: `${C2PA_BASE}/cloudscape-ACA-Cr.jpeg`,
     dest: 'real/cloudscape.jpg',
     description: 'Real cloudscape with C2PA credentials from Adobe Content Authenticity',
+  },
+  {
+    url: `${C2PA_BASE}/crater-lake.jpeg`,
+    dest: 'real/crater-lake-nocreds.jpg',
+    description: 'Real photograph with no C2PA credentials (baseline negative)',
+  },
+
+  // ── Real: Wikimedia macro photography (CC BY-SA) ──────────────────────────
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg',
+    dest: 'real/ant-photo.jpg',
+    description: 'Macro ant photograph (Wikimedia CC BY-SA 3.0)',
   },
 ];
 

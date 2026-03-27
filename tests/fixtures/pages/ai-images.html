@@ -9,19 +9,66 @@
     figure { margin: 0; }
     figcaption { font-size: 11px; margin-top: 4px; color: #aaa; max-width: 300px; }
     img { display: block; width: 300px; height: 220px; object-fit: cover; }
+    h2 { font-size: 13px; color: #888; margin: 24px 0 8px; border-top: 1px solid #333; padding-top: 12px; }
   </style>
 </head>
 <body>
   <h1>Fixture: Known AI-Generated Images</h1>
   <p>All images on this page are AI-generated. The extension should flag all of them.</p>
+
+  <h2>C2PA-signed (definite via metadata)</h2>
   <div class="grid">
     <figure>
       <img src="../images/ai/chatgpt-image.png" alt="AI generated image">
-      <figcaption>ChatGPT generated (C2PA-signed) — expect: definite</figcaption>
+      <figcaption>ChatGPT / GPT-4o (C2PA JUMBF) — expect: definite</figcaption>
     </figure>
     <figure>
       <img src="../images/ai/firefly-tabby-cat.jpg" alt="Adobe Firefly generated cat">
-      <figcaption>Adobe Firefly (C2PA-signed) — expect: definite</figcaption>
+      <figcaption>Adobe Firefly (C2PA JUMBF) — expect: definite</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/ai/bing-creator-puppy.jpg" alt="Bing Image Creator generated puppy">
+      <figcaption>Bing Image Creator / DALL-E (C2PA) — expect: definite</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/ai/dalle-puppy.webp" alt="DALL-E generated puppy">
+      <figcaption>DALL-E (C2PA) — expect: definite</figcaption>
+    </figure>
+  </div>
+
+  <h2>Stable Diffusion (pixel stats / no metadata)</h2>
+  <div class="grid">
+    <figure>
+      <img src="../images/ai/sd-txt2img-01.png" alt="Stable Diffusion txt2img">
+      <figcaption>SD txt2img sample (CompVis official) — expect: possible/likely</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/ai/sd-img2img-mountains.png" alt="Stable Diffusion img2img mountains">
+      <figcaption>SD img2img mountains (CompVis official) — expect: possible/likely</figcaption>
+    </figure>
+  </div>
+
+  <h2>FLUX (pixel stats / no metadata)</h2>
+  <div class="grid">
+    <figure>
+      <img src="../images/ai/flux-grid.jpg" alt="FLUX.1-dev sample">
+      <figcaption>FLUX.1-dev grid (Black Forest Labs) — expect: possible/likely</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/ai/flux-schnell-grid.jpg" alt="FLUX.1-schnell sample">
+      <figcaption>FLUX.1-schnell grid (Black Forest Labs) — expect: possible/likely</figcaption>
+    </figure>
+  </div>
+
+  <h2>SDXL (pixel stats / no metadata)</h2>
+  <div class="grid">
+    <figure>
+      <img src="../images/ai/sdxl-sample-01.jpg" alt="SDXL generated image">
+      <figcaption>SDXL sample (Stability AI official) — expect: possible/likely</figcaption>
+    </figure>
+    <figure>
+      <img src="../images/ai/sdxl-test.png" alt="SDXL test image">
+      <figcaption>SDXL test (Stability AI official) — expect: possible/likely</figcaption>
     </figure>
   </div>
 </body>
