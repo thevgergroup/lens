@@ -28,6 +28,9 @@ const SD_BASE    = 'https://raw.githubusercontent.com/CompVis/stable-diffusion/m
 const FLUX_BASE  = 'https://raw.githubusercontent.com/black-forest-labs/flux/main/assets';
 const SDXL_BASE  = 'https://raw.githubusercontent.com/Stability-AI/generative-models/main/assets';
 const MSFT_BASE  = 'https://raw.githubusercontent.com/microsoft/c2pa-extension-validator/main/test/media';
+const XAI_BASE   = 'https://x.ai/_next/static/media';
+const NASA_BASE  = 'https://images-assets.nasa.gov/image';
+const PICSUM_BASE = 'https://picsum.photos/id';
 
 const FIXTURES = [
   // ── AI: C2PA provenance — GPT-4o / Adobe Firefly ─────────────────────────
@@ -137,6 +140,99 @@ const FIXTURES = [
     url: 'https://upload.wikimedia.org/wikipedia/commons/1/1a/24701-nature-natural-beauty.jpg',
     dest: 'real/ocean-waves.jpg',
     description: 'Ocean waves photograph (Wikimedia CC0)',
+  },
+
+  // ── AI: xAI Aurora / Grok (official marketing samples, 1024x768 WebP) ──────
+  {
+    url: `${XAI_BASE}/Astronaut.43a24fdc.webp`,
+    dest: 'ai/aurora-astronaut.webp',
+    description: 'xAI Aurora generated astronaut (official sample)',
+  },
+  {
+    url: `${XAI_BASE}/CyberpunkCity.138b493b.webp`,
+    dest: 'ai/aurora-cyberpunk-city.webp',
+    description: 'xAI Aurora generated cyberpunk cityscape (official sample)',
+  },
+  {
+    url: `${XAI_BASE}/TeaDog.c1727b60.webp`,
+    dest: 'ai/aurora-tea-dog.webp',
+    description: 'xAI Aurora generated dog drinking tea (official sample)',
+  },
+  {
+    url: `${XAI_BASE}/VangoghCat.f12c34a3.webp`,
+    dest: 'ai/aurora-vangogh-cat.webp',
+    description: 'xAI Aurora Van Gogh style cat (official sample)',
+  },
+  {
+    url: `${XAI_BASE}/Mountain.928e767e.webp`,
+    dest: 'ai/aurora-mountain.webp',
+    description: 'xAI Aurora generated mountain landscape (official sample)',
+  },
+  {
+    url: `${XAI_BASE}/CherryBlossomSunset.7cfce89c.webp`,
+    dest: 'ai/aurora-cherry-blossom.webp',
+    description: 'xAI Aurora cherry blossom sunset (official sample)',
+  },
+
+  // ── Real: NASA public domain photographs ─────────────────────────────────
+  {
+    url: `${NASA_BASE}/s64-31845/s64-31845~medium.jpg`,
+    dest: 'real/nasa-astronaut-portrait.jpg',
+    description: 'NASA portrait of astronaut Eugene Cernan (public domain)',
+  },
+  {
+    url: `${NASA_BASE}/iss071e378171/iss071e378171~medium.jpg`,
+    dest: 'real/nasa-madagascar-coast.jpg',
+    description: 'NASA ISS photo of Madagascar coast (public domain)',
+  },
+  {
+    url: `${NASA_BASE}/KSC-20201028-PH-JBS02_0139/KSC-20201028-PH-JBS02_0139~medium.jpg`,
+    dest: 'real/nasa-wildlife.jpg',
+    description: 'NASA wildlife photography (public domain)',
+  },
+
+  // ── Real: Picsum / Unsplash (CC0) ─────────────────────────────────────────
+  {
+    url: `${PICSUM_BASE}/10/800/600.jpg`,
+    dest: 'real/picsum-landscape-10.jpg',
+    description: 'Picsum landscape #10 (Unsplash CC0)',
+  },
+  {
+    url: `${PICSUM_BASE}/65/800/600.jpg`,
+    dest: 'real/picsum-landscape-65.jpg',
+    description: 'Picsum landscape #65 (Unsplash CC0)',
+  },
+  {
+    url: `${PICSUM_BASE}/91/800/600.jpg`,
+    dest: 'real/picsum-portrait-91.jpg',
+    description: 'Picsum portrait/nature #91 (Unsplash CC0)',
+  },
+  {
+    url: `${PICSUM_BASE}/110/800/600.jpg`,
+    dest: 'real/picsum-landscape-110.jpg',
+    description: 'Picsum landscape #110 (Unsplash CC0)',
+  },
+  {
+    url: `${PICSUM_BASE}/200/800/600.jpg`,
+    dest: 'real/picsum-scene-200.jpg',
+    description: 'Picsum outdoor scene #200 (Unsplash CC0)',
+  },
+
+  // ── Real: Wikimedia Commons landmark/nature photos ────────────────────────
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/0/0c/GoldenGateBridge-001.jpg',
+    dest: 'real/golden-gate-bridge.jpg',
+    description: 'Golden Gate Bridge photograph (Wikimedia CC BY-SA)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/4/4d/Cat_November_2010-1a.jpg',
+    dest: 'real/cat-photo.jpg',
+    description: 'Cat portrait photograph (Wikimedia CC BY-SA)',
+  },
+  {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/3/36/Hopetoun_falls.jpg',
+    dest: 'real/waterfall.jpg',
+    description: 'Hopetoun Falls waterfall photograph (Wikimedia CC BY-SA)',
   },
 
   // ── AI: Stable Diffusion / DALL-E (Wikimedia Commons, requires User-Agent) ─
