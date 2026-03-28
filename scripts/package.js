@@ -38,7 +38,7 @@ mkdirSync(outDir);
 
 // Build the zip using the system zip command (available on macOS and Linux)
 const includeArgs = INCLUDE.map(f => `"${f}"`).join(' ');
-const cmd = `cd "${ROOT}" && zip -r "${zipPath}" ${includeArgs} -x "*.DS_Store" -x "__MACOSX/*"`;
+const cmd = `cd "${ROOT}" && zip -r "${zipPath}" ${includeArgs} -x "*.DS_Store" -x "__MACOSX/*" -x "icons/*.pxd" -x "icons/screenshot*" -x "icons/2026*" -x "icons/*.png.bak"`;
 
 console.log(`Packaging Lens v${version}...`);
 execSync(cmd, { stdio: 'inherit' });

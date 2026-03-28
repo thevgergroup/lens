@@ -1,6 +1,6 @@
 {
   "name": "lens-ai-image-detector",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,7 @@
     "fixture:serve": "npx serve tests/fixtures -l 3456 --cors --no-clipboard",
     "fixture:download": "node tests/fixtures/download-fixtures.js",
     "package": "node scripts/package.js",
-    "sign:firefox": "web-ext sign --channel=unlisted --source-dir=. --artifacts-dir=dist --ignore-files='tests/**' --ignore-files='scripts/**' --ignore-files='node_modules/**' --ignore-files='dist/**' --ignore-files='CLAUDE.md' --ignore-files='vitest.config.js' --ignore-files='agent-browser.json'"
+    "sign:firefox": "node scripts/sign-firefox.js"
   },
   "devDependencies": {
     "vitest": "^2.0.0",
