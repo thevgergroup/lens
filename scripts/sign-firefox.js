@@ -19,27 +19,29 @@ import { fileURLToPath } from 'url';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
-// Load .env
-const envPath = join(ROOT, '.env');
-if (!existsSync(envPath)) {
-  console.error('Error: .env file not found.');
-  console.error('Create .env with MOZILLA_JWT_ISSUER and MOZILLA_JWT_SECRET.');
-  console.error('Get credentials at: https://addons.mozilla.org/developers/addon/api/key/');
-  process.exit(1);
-}
-
-const env = Object.fromEntries(
-  readFileSync(envPath, 'utf8')
-    .split('\n')
-    .filter(l => l.includes('=') && !l.startsWith('#'))
-    .map(l => l.split('=').map(s => s.trim()))
-);
-
-const apiKey = env.MOZILLA_JWT_ISSUER;
-const apiSecret = env.MOZILLA_JWT_SECRET;
+// Load credentials: environment variables take precedence over .env (allows CI use)
+let apiKey = process.env.MOZILLA_JWT_ISSUER;
+let apiSecret = process.env.MOZILLA_JWT_SECRET;
 
 if (!apiKey || !apiSecret) {
-  console.error('Error: MOZILLA_JWT_ISSUER and MOZILLA_JWT_SECRET must be set in .env');
+  const envPath = join(ROOT, '.env');
+  if (!existsSync(envPath)) {
+    console.error('Error: MOZILLA_JWT_ISSUER and MOZILLA_JWT_SECRET must be set in the environment or in .env');
+    console.error('Get credentials at: https://addons.mozilla.org/developers/addon/api/key/');
+    process.exit(1);
+  }
+  const env = Object.fromEntries(
+    readFileSync(envPath, 'utf8')
+      .split('\n')
+      .filter(l => l.includes('=') && !l.startsWith('#'))
+      .map(l => l.split('=').map(s => s.trim()))
+  );
+  apiKey = apiKey || env.MOZILLA_JWT_ISSUER;
+  apiSecret = apiSecret || env.MOZILLA_JWT_SECRET;
+}
+
+if (!apiKey || !apiSecret) {
+  console.error('Error: MOZILLA_JWT_ISSUER and MOZILLA_JWT_SECRET must be set in the environment or in .env');
   process.exit(1);
 }
 

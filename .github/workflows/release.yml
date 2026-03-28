@@ -117,7 +117,7 @@ jobs:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           xcodebuild -project safari-ext/Lens/Lens.xcodeproj \
-            -scheme "Lens (macOS)" \
+            -scheme "Lens" \
             -configuration Release \
             -archivePath $RUNNER_TEMP/Lens.xcarchive \
             DEVELOPMENT_TEAM="$TEAM_ID" \
