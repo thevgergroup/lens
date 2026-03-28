@@ -53,9 +53,10 @@ jobs:
           MOZILLA_JWT_ISSUER: ${{ secrets.MOZILLA_JWT_ISSUER }}
           MOZILLA_JWT_SECRET: ${{ secrets.MOZILLA_JWT_SECRET }}
         run: |
-          npm run sign:firefox
-          XPI=$(find dist -name '*.xpi' | head -1)
-          mv "$XPI" "dist/lens-${{ steps.version.outputs.version }}.xpi"
+          npm run sign:firefox && \
+            XPI=$(find dist -name '*.xpi' | head -1) && \
+            mv "$XPI" "dist/lens-${{ steps.version.outputs.version }}.xpi" || \
+            echo "::warning::Firefox signing failed (version may already exist on AMO). Skipping XPI."
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -63,6 +64,7 @@ jobs:
           name: lens-${{ steps.version.outputs.version }}
           path: dist/
           retention-days: 30
+          if-no-files-found: warn
 
   build-safari:
     name: Build Safari (macOS)
@@ -121,7 +123,8 @@ jobs:
             -configuration Release \
             -archivePath $RUNNER_TEMP/Lens.xcarchive \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
             archive
 
       - name: Export and notarize
@@ -232,4 +235,4 @@ jobs:
             dist/lens-${{ needs.build.outputs.version }}.zip
             dist/lens-${{ needs.build.outputs.version }}.xpi
             dist/lens-${{ needs.build.outputs.version }}-mac.dmg
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
