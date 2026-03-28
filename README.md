@@ -1,5 +1,7 @@
 # Lens — AI Image Detector
 
+<img src="icons/icon128.png" alt="Lens icon" width="64">
+
 A browser extension that tells you whether an image was AI-generated, as you browse. Runs entirely in your browser — no images are uploaded, no account needed.
 
 **[Read the full write-up →](https://thevgergroup.com/blog/lens-seeing-through-ai-generated-images/)**
