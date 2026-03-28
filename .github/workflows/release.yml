@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:unit
+
+  build:
+    name: Package extension
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Extract version from manifest
+        id: version
+        run: echo "version=$(node -p "require('./manifest.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag matches manifest version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MANIFEST="${{ steps.version.outputs.version }}"
+          if [ "$TAG" != "$MANIFEST" ]; then
+            echo "Tag $TAG does not match manifest version $MANIFEST"
+            exit 1
+          fi
+
+      - name: Build Chrome/Edge zip
+        run: npm run package
+
+      - name: Sign Firefox XPI
+        env:
+          MOZILLA_JWT_ISSUER: ${{ secrets.MOZILLA_JWT_ISSUER }}
+          MOZILLA_JWT_SECRET: ${{ secrets.MOZILLA_JWT_SECRET }}
+        run: |
+          npm run sign:firefox
+          # web-ext produces a UUID-prefixed filename — rename to canonical
+          XPI=$(find dist -name '*.xpi' | head -1)
+          mv "$XPI" "dist/lens-${{ steps.version.outputs.version }}.xpi"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lens-${{ steps.version.outputs.version }}
+          path: dist/
+          retention-days: 30
+
+  release:
+    name: Create GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lens-${{ needs.build.outputs.version }}
+          path: dist/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Lens v${{ needs.build.outputs.version }}
+          body: |
+            ## Install
+
+            ### Firefox
+            Download **lens-${{ needs.build.outputs.version }}.xpi** below and open it in Firefox. You'll be prompted to install.
+
+            ### Chrome, Edge, Brave
+            Download **lens-${{ needs.build.outputs.version }}.zip**, unzip it, then load via `chrome://extensions/` → Developer mode → Load unpacked.
+
+            ---
+            See [WHITEPAPER.md](https://github.com/thevgergroup/lens/blob/main/WHITEPAPER.md) for technical details.
+          files: |
+            dist/lens-${{ needs.build.outputs.version }}.zip
+            dist/lens-${{ needs.build.outputs.version }}.xpi
+          fail_on_unmatched_files: true
