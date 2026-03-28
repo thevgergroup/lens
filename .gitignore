@@ -21,6 +21,14 @@ tests/integration/screenshots/
 # Symlink to /tmp/lens-ext (local dev only)
 lens-ext
 
+# Safari Xcode build artifacts (not source)
+safari-ext/Lens/build/
+safari-ext/**/*.xcuserstate
+safari-ext/**/xcuserdata/
+safari-ext/**/*.xccheckout
+safari-ext/**/*.moved-aside
+safari-ext/**/DerivedData/
+
 # Editor config (personal preferences)
 .vscode/
 

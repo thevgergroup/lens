@@ -19,7 +19,7 @@ jobs:
       - run: npm run test:unit
 
   build:
-    name: Package extension
+    name: Package Chrome/Firefox
     needs: test
     runs-on: ubuntu-latest
     outputs:
@@ -54,7 +54,6 @@ jobs:
           MOZILLA_JWT_SECRET: ${{ secrets.MOZILLA_JWT_SECRET }}
         run: |
           npm run sign:firefox
-          # web-ext produces a UUID-prefixed filename — rename to canonical
           XPI=$(find dist -name '*.xpi' | head -1)
           mv "$XPI" "dist/lens-${{ steps.version.outputs.version }}.xpi"
 
@@ -65,19 +64,150 @@ jobs:
           path: dist/
           retention-days: 30
 
+  build-safari:
+    name: Build Safari (macOS)
+    needs: test
+    runs-on: macos-15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Extract version from manifest
+        id: version
+        run: echo "version=$(node -p "require('./manifest.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Import Developer ID certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/lens-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+
+          # Create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$CERTIFICATE_BASE64" | base64 --decode > /tmp/lens-cert.p12
+          security import /tmp/lens-cert.p12 -k "$KEYCHAIN_PATH" \
+            -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain
+          rm /tmp/lens-cert.p12
+
+      - name: Install App Store Connect API key
+        env:
+          API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$API_KEY_BASE64" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8
+
+      - name: Build Safari extension archive
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcodebuild -project safari-ext/Lens/Lens.xcodeproj \
+            -scheme "Lens (macOS)" \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/Lens.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            archive
+
+      - name: Export and notarize
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Export the archive as a Developer ID app
+          cat > /tmp/export-options.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>developer-id</string>
+            <key>teamID</key>
+            <string>${TEAM_ID}</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/Lens.xcarchive \
+            -exportOptionsPlist /tmp/export-options.plist \
+            -exportPath $RUNNER_TEMP/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8 \
+            -authenticationKeyID "$API_KEY_ID" \
+            -authenticationKeyIssuerID "$API_ISSUER_ID"
+
+          # Zip for notarization
+          ditto -c -k --keepParent \
+            "$RUNNER_TEMP/export/Lens.app" \
+            "$RUNNER_TEMP/Lens-notarize.zip"
+
+          # Notarize
+          xcrun notarytool submit "$RUNNER_TEMP/Lens-notarize.zip" \
+            --key ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8 \
+            --key-id "$API_KEY_ID" \
+            --issuer "$API_ISSUER_ID" \
+            --wait
+
+          # Staple the notarization ticket
+          xcrun stapler staple "$RUNNER_TEMP/export/Lens.app"
+
+          # Package as DMG for distribution
+          mkdir -p dist
+          hdiutil create -volname "Lens $VERSION" \
+            -srcfolder "$RUNNER_TEMP/export/Lens.app" \
+            -ov -format UDZO \
+            "dist/lens-${VERSION}-mac.dmg"
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+
+      - name: Upload Safari artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lens-safari-${{ steps.version.outputs.version }}
+          path: dist/lens-${{ steps.version.outputs.version }}-mac.dmg
+          retention-days: 30
+
   release:
     name: Create GitHub release
-    needs: build
+    needs: [build, build-safari]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifacts
+      - name: Download Chrome/Firefox artifacts
         uses: actions/download-artifact@v4
         with:
           name: lens-${{ needs.build.outputs.version }}
+          path: dist/
+
+      - name: Download Safari artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lens-safari-${{ needs.build.outputs.version }}
           path: dist/
 
       - name: Create release
@@ -93,9 +223,13 @@ jobs:
             ### Chrome, Edge, Brave
             Download **lens-${{ needs.build.outputs.version }}.zip**, unzip it, then load via `chrome://extensions/` → Developer mode → Load unpacked.
 
+            ### Safari (macOS)
+            Download **lens-${{ needs.build.outputs.version }}-mac.dmg**, open it, drag Lens to Applications, then enable it in Safari → Settings → Extensions.
+
             ---
             See [WHITEPAPER.md](https://github.com/thevgergroup/lens/blob/main/WHITEPAPER.md) for technical details.
           files: |
             dist/lens-${{ needs.build.outputs.version }}.zip
             dist/lens-${{ needs.build.outputs.version }}.xpi
+            dist/lens-${{ needs.build.outputs.version }}-mac.dmg
           fail_on_unmatched_files: true

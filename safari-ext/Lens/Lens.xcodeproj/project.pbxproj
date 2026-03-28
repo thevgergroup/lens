@@ -1,0 +1,677 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		CD7A36222F7884A700F32086 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD7A36212F7884A700F32086 /* AppDelegate.swift */; };
+		CD7A36262F7884A700F32086 /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36242F7884A700F32086 /* Main.html */; };
+		CD7A36282F7884A700F32086 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36272F7884A700F32086 /* Icon.png */; };
+		CD7A362A2F7884A700F32086 /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36292F7884A700F32086 /* Style.css */; };
+		CD7A362C2F7884A700F32086 /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = CD7A362B2F7884A700F32086 /* Script.js */; };
+		CD7A362E2F7884A700F32086 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD7A362D2F7884A700F32086 /* ViewController.swift */; };
+		CD7A36312F7884A700F32086 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = CD7A362F2F7884A700F32086 /* Main.storyboard */; };
+		CD7A36332F7884A800F32086 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36322F7884A800F32086 /* Assets.xcassets */; };
+		CD7A363A2F7884A800F32086 /* Lens Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CD7A36392F7884A800F32086 /* Lens Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CD7A363F2F7884A800F32086 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD7A363E2F7884A800F32086 /* SafariWebExtensionHandler.swift */; };
+		CD7A36602F7884A900F32086 /* background in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364B2F7884A900F32086 /* background */; };
+		CD7A36612F7884A900F32086 /* popup in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364C2F7884A900F32086 /* popup */; };
+		CD7A36622F7884A900F32086 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364D2F7884A900F32086 /* LICENSE */; };
+		CD7A36632F7884A900F32086 /* 2026-03-28_00-56-05.png in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364E2F7884A900F32086 /* 2026-03-28_00-56-05.png */; };
+		CD7A36642F7884A900F32086 /* dist in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364F2F7884A900F32086 /* dist */; };
+		CD7A36652F7884A900F32086 /* node_modules in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36502F7884A900F32086 /* node_modules */; };
+		CD7A36662F7884A900F32086 /* tests in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36512F7884A900F32086 /* tests */; };
+		CD7A36672F7884A900F32086 /* content in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36522F7884A900F32086 /* content */; };
+		CD7A36682F7884A900F32086 /* vitest.config.js in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36532F7884A900F32086 /* vitest.config.js */; };
+		CD7A36692F7884A900F32086 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36542F7884A900F32086 /* README.md */; };
+		CD7A366A2F7884A900F32086 /* package-lock.json in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36552F7884A900F32086 /* package-lock.json */; };
+		CD7A366B2F7884A900F32086 /* package.json in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36562F7884A900F32086 /* package.json */; };
+		CD7A366C2F7884A900F32086 /* chrome in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36572F7884A900F32086 /* chrome */; };
+		CD7A366D2F7884A900F32086 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36582F7884A900F32086 /* icons */; };
+		CD7A366E2F7884A900F32086 /* scripts in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36592F7884A900F32086 /* scripts */; };
+		CD7A366F2F7884A900F32086 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365A2F7884A900F32086 /* manifest.json */; };
+		CD7A36702F7884A900F32086 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365B2F7884A900F32086 /* lib */; };
+		CD7A36712F7884A900F32086 /* agent-browser.json in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365C2F7884A900F32086 /* agent-browser.json */; };
+		CD7A36722F7884A900F32086 /* safari-ext in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365D2F7884A900F32086 /* safari-ext */; };
+		CD7A36732F7884A900F32086 /* CLAUDE.md in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365E2F7884A900F32086 /* CLAUDE.md */; };
+		CD7A36742F7884A900F32086 /* WHITEPAPER.md in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365F2F7884A900F32086 /* WHITEPAPER.md */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		CD7A363B2F7884A800F32086 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CD7A36162F7884A700F32086 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CD7A36382F7884A800F32086;
+			remoteInfo = "Lens Extension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CD7A36462F7884A800F32086 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CD7A363A2F7884A800F32086 /* Lens Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		CD7A361E2F7884A700F32086 /* Lens.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lens.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CD7A36212F7884A700F32086 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		CD7A36252F7884A700F32086 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		CD7A36272F7884A700F32086 /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		CD7A36292F7884A700F32086 /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		CD7A362B2F7884A700F32086 /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		CD7A362D2F7884A700F32086 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		CD7A36302F7884A700F32086 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		CD7A36322F7884A800F32086 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CD7A36342F7884A800F32086 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CD7A36392F7884A800F32086 /* Lens Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Lens Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CD7A363E2F7884A800F32086 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		CD7A36402F7884A800F32086 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CD7A364B2F7884A900F32086 /* background */ = {isa = PBXFileReference; lastKnownFileType = folder; name = background; path = ../../../background; sourceTree = "<group>"; };
+		CD7A364C2F7884A900F32086 /* popup */ = {isa = PBXFileReference; lastKnownFileType = folder; name = popup; path = ../../../popup; sourceTree = "<group>"; };
+		CD7A364D2F7884A900F32086 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; name = LICENSE; path = ../../../LICENSE; sourceTree = "<group>"; };
+		CD7A364E2F7884A900F32086 /* 2026-03-28_00-56-05.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "2026-03-28_00-56-05.png"; path = "../../../2026-03-28_00-56-05.png"; sourceTree = "<group>"; };
+		CD7A364F2F7884A900F32086 /* dist */ = {isa = PBXFileReference; lastKnownFileType = folder; name = dist; path = ../../../dist; sourceTree = "<group>"; };
+		CD7A36502F7884A900F32086 /* node_modules */ = {isa = PBXFileReference; lastKnownFileType = folder; name = node_modules; path = ../../../node_modules; sourceTree = "<group>"; };
+		CD7A36512F7884A900F32086 /* tests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tests; path = ../../../tests; sourceTree = "<group>"; };
+		CD7A36522F7884A900F32086 /* content */ = {isa = PBXFileReference; lastKnownFileType = folder; name = content; path = ../../../content; sourceTree = "<group>"; };
+		CD7A36532F7884A900F32086 /* vitest.config.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = vitest.config.js; path = ../../../vitest.config.js; sourceTree = "<group>"; };
+		CD7A36542F7884A900F32086 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../../../README.md; sourceTree = "<group>"; };
+		CD7A36552F7884A900F32086 /* package-lock.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "package-lock.json"; path = "../../../package-lock.json"; sourceTree = "<group>"; };
+		CD7A36562F7884A900F32086 /* package.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = package.json; path = ../../../package.json; sourceTree = "<group>"; };
+		CD7A36572F7884A900F32086 /* chrome */ = {isa = PBXFileReference; lastKnownFileType = folder; name = chrome; path = ../../../chrome; sourceTree = "<group>"; };
+		CD7A36582F7884A900F32086 /* icons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = icons; path = ../../../icons; sourceTree = "<group>"; };
+		CD7A36592F7884A900F32086 /* scripts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = scripts; path = ../../../scripts; sourceTree = "<group>"; };
+		CD7A365A2F7884A900F32086 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = ../../../manifest.json; sourceTree = "<group>"; };
+		CD7A365B2F7884A900F32086 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = ../../../lib; sourceTree = "<group>"; };
+		CD7A365C2F7884A900F32086 /* agent-browser.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "agent-browser.json"; path = "../../../agent-browser.json"; sourceTree = "<group>"; };
+		CD7A365D2F7884A900F32086 /* safari-ext */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "safari-ext"; path = ../..; sourceTree = "<group>"; };
+		CD7A365E2F7884A900F32086 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = CLAUDE.md; path = ../../../CLAUDE.md; sourceTree = "<group>"; };
+		CD7A365F2F7884A900F32086 /* WHITEPAPER.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = WHITEPAPER.md; path = ../../../WHITEPAPER.md; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		CD7A361B2F7884A700F32086 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CD7A36362F7884A800F32086 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		CD7A36152F7884A700F32086 = {
+			isa = PBXGroup;
+			children = (
+				CD7A36202F7884A700F32086 /* Lens */,
+				CD7A363D2F7884A800F32086 /* Lens Extension */,
+				CD7A361F2F7884A700F32086 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CD7A361F2F7884A700F32086 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CD7A361E2F7884A700F32086 /* Lens.app */,
+				CD7A36392F7884A800F32086 /* Lens Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CD7A36202F7884A700F32086 /* Lens */ = {
+			isa = PBXGroup;
+			children = (
+				CD7A36212F7884A700F32086 /* AppDelegate.swift */,
+				CD7A362D2F7884A700F32086 /* ViewController.swift */,
+				CD7A362F2F7884A700F32086 /* Main.storyboard */,
+				CD7A36322F7884A800F32086 /* Assets.xcassets */,
+				CD7A36342F7884A800F32086 /* Info.plist */,
+				CD7A36232F7884A700F32086 /* Resources */,
+			);
+			path = Lens;
+			sourceTree = "<group>";
+		};
+		CD7A36232F7884A700F32086 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				CD7A36242F7884A700F32086 /* Main.html */,
+				CD7A36272F7884A700F32086 /* Icon.png */,
+				CD7A36292F7884A700F32086 /* Style.css */,
+				CD7A362B2F7884A700F32086 /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		CD7A363D2F7884A800F32086 /* Lens Extension */ = {
+			isa = PBXGroup;
+			children = (
+				CD7A364A2F7884A900F32086 /* Resources */,
+				CD7A363E2F7884A800F32086 /* SafariWebExtensionHandler.swift */,
+				CD7A36402F7884A800F32086 /* Info.plist */,
+			);
+			path = "Lens Extension";
+			sourceTree = "<group>";
+		};
+		CD7A364A2F7884A900F32086 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				CD7A364B2F7884A900F32086 /* background */,
+				CD7A364C2F7884A900F32086 /* popup */,
+				CD7A364D2F7884A900F32086 /* LICENSE */,
+				CD7A364E2F7884A900F32086 /* 2026-03-28_00-56-05.png */,
+				CD7A364F2F7884A900F32086 /* dist */,
+				CD7A36502F7884A900F32086 /* node_modules */,
+				CD7A36512F7884A900F32086 /* tests */,
+				CD7A36522F7884A900F32086 /* content */,
+				CD7A36532F7884A900F32086 /* vitest.config.js */,
+				CD7A36542F7884A900F32086 /* README.md */,
+				CD7A36552F7884A900F32086 /* package-lock.json */,
+				CD7A36562F7884A900F32086 /* package.json */,
+				CD7A36572F7884A900F32086 /* chrome */,
+				CD7A36582F7884A900F32086 /* icons */,
+				CD7A36592F7884A900F32086 /* scripts */,
+				CD7A365A2F7884A900F32086 /* manifest.json */,
+				CD7A365B2F7884A900F32086 /* lib */,
+				CD7A365C2F7884A900F32086 /* agent-browser.json */,
+				CD7A365D2F7884A900F32086 /* safari-ext */,
+				CD7A365E2F7884A900F32086 /* CLAUDE.md */,
+				CD7A365F2F7884A900F32086 /* WHITEPAPER.md */,
+			);
+			name = Resources;
+			path = "Lens Extension";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		CD7A361D2F7884A700F32086 /* Lens */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CD7A36472F7884A800F32086 /* Build configuration list for PBXNativeTarget "Lens" */;
+			buildPhases = (
+				CD7A361A2F7884A700F32086 /* Sources */,
+				CD7A361B2F7884A700F32086 /* Frameworks */,
+				CD7A361C2F7884A700F32086 /* Resources */,
+				CD7A36462F7884A800F32086 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CD7A363C2F7884A800F32086 /* PBXTargetDependency */,
+			);
+			name = Lens;
+			packageProductDependencies = (
+			);
+			productName = Lens;
+			productReference = CD7A361E2F7884A700F32086 /* Lens.app */;
+			productType = "com.apple.product-type.application";
+		};
+		CD7A36382F7884A800F32086 /* Lens Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CD7A36432F7884A800F32086 /* Build configuration list for PBXNativeTarget "Lens Extension" */;
+			buildPhases = (
+				CD7A36352F7884A800F32086 /* Sources */,
+				CD7A36362F7884A800F32086 /* Frameworks */,
+				CD7A36372F7884A800F32086 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Lens Extension";
+			packageProductDependencies = (
+			);
+			productName = "Lens Extension";
+			productReference = CD7A36392F7884A800F32086 /* Lens Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		CD7A36162F7884A700F32086 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					CD7A361D2F7884A700F32086 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					CD7A36382F7884A800F32086 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+				};
+			};
+			buildConfigurationList = CD7A36192F7884A700F32086 /* Build configuration list for PBXProject "Lens" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = CD7A36152F7884A700F32086;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = CD7A361F2F7884A700F32086 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CD7A361D2F7884A700F32086 /* Lens */,
+				CD7A36382F7884A800F32086 /* Lens Extension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CD7A361C2F7884A700F32086 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD7A36282F7884A700F32086 /* Icon.png in Resources */,
+				CD7A36312F7884A700F32086 /* Main.storyboard in Resources */,
+				CD7A362C2F7884A700F32086 /* Script.js in Resources */,
+				CD7A36262F7884A700F32086 /* Main.html in Resources */,
+				CD7A36332F7884A800F32086 /* Assets.xcassets in Resources */,
+				CD7A362A2F7884A700F32086 /* Style.css in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CD7A36372F7884A800F32086 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD7A36712F7884A900F32086 /* agent-browser.json in Resources */,
+				CD7A366C2F7884A900F32086 /* chrome in Resources */,
+				CD7A36732F7884A900F32086 /* CLAUDE.md in Resources */,
+				CD7A36632F7884A900F32086 /* 2026-03-28_00-56-05.png in Resources */,
+				CD7A36622F7884A900F32086 /* LICENSE in Resources */,
+				CD7A366E2F7884A900F32086 /* scripts in Resources */,
+				CD7A36692F7884A900F32086 /* README.md in Resources */,
+				CD7A36742F7884A900F32086 /* WHITEPAPER.md in Resources */,
+				CD7A36672F7884A900F32086 /* content in Resources */,
+				CD7A366D2F7884A900F32086 /* icons in Resources */,
+				CD7A36722F7884A900F32086 /* safari-ext in Resources */,
+				CD7A366A2F7884A900F32086 /* package-lock.json in Resources */,
+				CD7A36702F7884A900F32086 /* lib in Resources */,
+				CD7A36642F7884A900F32086 /* dist in Resources */,
+				CD7A36682F7884A900F32086 /* vitest.config.js in Resources */,
+				CD7A36602F7884A900F32086 /* background in Resources */,
+				CD7A366B2F7884A900F32086 /* package.json in Resources */,
+				CD7A366F2F7884A900F32086 /* manifest.json in Resources */,
+				CD7A36652F7884A900F32086 /* node_modules in Resources */,
+				CD7A36612F7884A900F32086 /* popup in Resources */,
+				CD7A36662F7884A900F32086 /* tests in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CD7A361A2F7884A700F32086 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD7A362E2F7884A700F32086 /* ViewController.swift in Sources */,
+				CD7A36222F7884A700F32086 /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CD7A36352F7884A800F32086 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD7A363F2F7884A800F32086 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CD7A363C2F7884A800F32086 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CD7A36382F7884A800F32086 /* Lens Extension */;
+			targetProxy = CD7A363B2F7884A800F32086 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		CD7A36242F7884A700F32086 /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				CD7A36252F7884A700F32086 /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		CD7A362F2F7884A700F32086 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				CD7A36302F7884A700F32086 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		CD7A36412F7884A800F32086 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		CD7A36422F7884A800F32086 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		CD7A36442F7884A800F32086 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Lens Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Lens Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.thevgergroup.lens.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CD7A36452F7884A800F32086 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Lens Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Lens Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.thevgergroup.lens.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		CD7A36482F7884A800F32086 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Lens/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Lens;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.thevgergroup.Lens;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CD7A36492F7884A800F32086 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Lens/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Lens;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.thevgergroup.Lens;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		CD7A36192F7884A700F32086 /* Build configuration list for PBXProject "Lens" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CD7A36412F7884A800F32086 /* Debug */,
+				CD7A36422F7884A800F32086 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CD7A36432F7884A800F32086 /* Build configuration list for PBXNativeTarget "Lens Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CD7A36442F7884A800F32086 /* Debug */,
+				CD7A36452F7884A800F32086 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CD7A36472F7884A800F32086 /* Build configuration list for PBXNativeTarget "Lens" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CD7A36482F7884A800F32086 /* Debug */,
+				CD7A36492F7884A800F32086 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = CD7A36162F7884A700F32086 /* Project object */;
+}
