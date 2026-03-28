@@ -10,10 +10,13 @@
     "test:integration": "bash tests/integration/run.sh",
     "test:all": "bash tests/run-all.sh",
     "fixture:serve": "npx serve tests/fixtures -l 3456 --cors --no-clipboard",
-    "fixture:download": "node tests/fixtures/download-fixtures.js"
+    "fixture:download": "node tests/fixtures/download-fixtures.js",
+    "package": "node scripts/package.js",
+    "sign:firefox": "web-ext sign --channel=unlisted --source-dir=. --artifacts-dir=dist --ignore-files='tests/**' --ignore-files='scripts/**' --ignore-files='node_modules/**' --ignore-files='dist/**' --ignore-files='CLAUDE.md' --ignore-files='vitest.config.js' --ignore-files='agent-browser.json'"
   },
   "devDependencies": {
     "vitest": "^2.0.0",
-    "serve": "^14.0.0"
+    "serve": "^14.0.0",
+    "web-ext": "^8.0.0"
   }
 }
