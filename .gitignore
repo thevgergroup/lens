@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.env
 
 # Chrome for Testing binary (downloaded via npx @puppeteer/browsers install chrome@stable)
 chrome/
