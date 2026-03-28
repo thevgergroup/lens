@@ -20,24 +20,10 @@
 		CD7A36602F7884A900F32086 /* background in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364B2F7884A900F32086 /* background */; };
 		CD7A36612F7884A900F32086 /* popup in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364C2F7884A900F32086 /* popup */; };
 		CD7A36622F7884A900F32086 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364D2F7884A900F32086 /* LICENSE */; };
-		CD7A36632F7884A900F32086 /* 2026-03-28_00-56-05.png in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364E2F7884A900F32086 /* 2026-03-28_00-56-05.png */; };
-		CD7A36642F7884A900F32086 /* dist in Resources */ = {isa = PBXBuildFile; fileRef = CD7A364F2F7884A900F32086 /* dist */; };
-		CD7A36652F7884A900F32086 /* node_modules in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36502F7884A900F32086 /* node_modules */; };
-		CD7A36662F7884A900F32086 /* tests in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36512F7884A900F32086 /* tests */; };
 		CD7A36672F7884A900F32086 /* content in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36522F7884A900F32086 /* content */; };
-		CD7A36682F7884A900F32086 /* vitest.config.js in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36532F7884A900F32086 /* vitest.config.js */; };
-		CD7A36692F7884A900F32086 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36542F7884A900F32086 /* README.md */; };
-		CD7A366A2F7884A900F32086 /* package-lock.json in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36552F7884A900F32086 /* package-lock.json */; };
-		CD7A366B2F7884A900F32086 /* package.json in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36562F7884A900F32086 /* package.json */; };
-		CD7A366C2F7884A900F32086 /* chrome in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36572F7884A900F32086 /* chrome */; };
 		CD7A366D2F7884A900F32086 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36582F7884A900F32086 /* icons */; };
-		CD7A366E2F7884A900F32086 /* scripts in Resources */ = {isa = PBXBuildFile; fileRef = CD7A36592F7884A900F32086 /* scripts */; };
 		CD7A366F2F7884A900F32086 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365A2F7884A900F32086 /* manifest.json */; };
 		CD7A36702F7884A900F32086 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365B2F7884A900F32086 /* lib */; };
-		CD7A36712F7884A900F32086 /* agent-browser.json in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365C2F7884A900F32086 /* agent-browser.json */; };
-		CD7A36722F7884A900F32086 /* safari-ext in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365D2F7884A900F32086 /* safari-ext */; };
-		CD7A36732F7884A900F32086 /* CLAUDE.md in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365E2F7884A900F32086 /* CLAUDE.md */; };
-		CD7A36742F7884A900F32086 /* WHITEPAPER.md in Resources */ = {isa = PBXBuildFile; fileRef = CD7A365F2F7884A900F32086 /* WHITEPAPER.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,24 +67,10 @@
 		CD7A364B2F7884A900F32086 /* background */ = {isa = PBXFileReference; lastKnownFileType = folder; name = background; path = ../../../background; sourceTree = "<group>"; };
 		CD7A364C2F7884A900F32086 /* popup */ = {isa = PBXFileReference; lastKnownFileType = folder; name = popup; path = ../../../popup; sourceTree = "<group>"; };
 		CD7A364D2F7884A900F32086 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; name = LICENSE; path = ../../../LICENSE; sourceTree = "<group>"; };
-		CD7A364E2F7884A900F32086 /* 2026-03-28_00-56-05.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "2026-03-28_00-56-05.png"; path = "../../../2026-03-28_00-56-05.png"; sourceTree = "<group>"; };
-		CD7A364F2F7884A900F32086 /* dist */ = {isa = PBXFileReference; lastKnownFileType = folder; name = dist; path = ../../../dist; sourceTree = "<group>"; };
-		CD7A36502F7884A900F32086 /* node_modules */ = {isa = PBXFileReference; lastKnownFileType = folder; name = node_modules; path = ../../../node_modules; sourceTree = "<group>"; };
-		CD7A36512F7884A900F32086 /* tests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tests; path = ../../../tests; sourceTree = "<group>"; };
 		CD7A36522F7884A900F32086 /* content */ = {isa = PBXFileReference; lastKnownFileType = folder; name = content; path = ../../../content; sourceTree = "<group>"; };
-		CD7A36532F7884A900F32086 /* vitest.config.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = vitest.config.js; path = ../../../vitest.config.js; sourceTree = "<group>"; };
-		CD7A36542F7884A900F32086 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../../../README.md; sourceTree = "<group>"; };
-		CD7A36552F7884A900F32086 /* package-lock.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "package-lock.json"; path = "../../../package-lock.json"; sourceTree = "<group>"; };
-		CD7A36562F7884A900F32086 /* package.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = package.json; path = ../../../package.json; sourceTree = "<group>"; };
-		CD7A36572F7884A900F32086 /* chrome */ = {isa = PBXFileReference; lastKnownFileType = folder; name = chrome; path = ../../../chrome; sourceTree = "<group>"; };
 		CD7A36582F7884A900F32086 /* icons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = icons; path = ../../../icons; sourceTree = "<group>"; };
-		CD7A36592F7884A900F32086 /* scripts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = scripts; path = ../../../scripts; sourceTree = "<group>"; };
 		CD7A365A2F7884A900F32086 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = ../../../manifest.json; sourceTree = "<group>"; };
 		CD7A365B2F7884A900F32086 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = ../../../lib; sourceTree = "<group>"; };
-		CD7A365C2F7884A900F32086 /* agent-browser.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "agent-browser.json"; path = "../../../agent-browser.json"; sourceTree = "<group>"; };
-		CD7A365D2F7884A900F32086 /* safari-ext */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "safari-ext"; path = ../..; sourceTree = "<group>"; };
-		CD7A365E2F7884A900F32086 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = CLAUDE.md; path = ../../../CLAUDE.md; sourceTree = "<group>"; };
-		CD7A365F2F7884A900F32086 /* WHITEPAPER.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = WHITEPAPER.md; path = ../../../WHITEPAPER.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -177,24 +149,10 @@
 				CD7A364B2F7884A900F32086 /* background */,
 				CD7A364C2F7884A900F32086 /* popup */,
 				CD7A364D2F7884A900F32086 /* LICENSE */,
-				CD7A364E2F7884A900F32086 /* 2026-03-28_00-56-05.png */,
-				CD7A364F2F7884A900F32086 /* dist */,
-				CD7A36502F7884A900F32086 /* node_modules */,
-				CD7A36512F7884A900F32086 /* tests */,
 				CD7A36522F7884A900F32086 /* content */,
-				CD7A36532F7884A900F32086 /* vitest.config.js */,
-				CD7A36542F7884A900F32086 /* README.md */,
-				CD7A36552F7884A900F32086 /* package-lock.json */,
-				CD7A36562F7884A900F32086 /* package.json */,
-				CD7A36572F7884A900F32086 /* chrome */,
 				CD7A36582F7884A900F32086 /* icons */,
-				CD7A36592F7884A900F32086 /* scripts */,
 				CD7A365A2F7884A900F32086 /* manifest.json */,
 				CD7A365B2F7884A900F32086 /* lib */,
-				CD7A365C2F7884A900F32086 /* agent-browser.json */,
-				CD7A365D2F7884A900F32086 /* safari-ext */,
-				CD7A365E2F7884A900F32086 /* CLAUDE.md */,
-				CD7A365F2F7884A900F32086 /* WHITEPAPER.md */,
 			);
 			name = Resources;
 			path = "Lens Extension";
@@ -299,27 +257,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CD7A36712F7884A900F32086 /* agent-browser.json in Resources */,
-				CD7A366C2F7884A900F32086 /* chrome in Resources */,
-				CD7A36732F7884A900F32086 /* CLAUDE.md in Resources */,
-				CD7A36632F7884A900F32086 /* 2026-03-28_00-56-05.png in Resources */,
 				CD7A36622F7884A900F32086 /* LICENSE in Resources */,
-				CD7A366E2F7884A900F32086 /* scripts in Resources */,
-				CD7A36692F7884A900F32086 /* README.md in Resources */,
-				CD7A36742F7884A900F32086 /* WHITEPAPER.md in Resources */,
 				CD7A36672F7884A900F32086 /* content in Resources */,
 				CD7A366D2F7884A900F32086 /* icons in Resources */,
-				CD7A36722F7884A900F32086 /* safari-ext in Resources */,
-				CD7A366A2F7884A900F32086 /* package-lock.json in Resources */,
 				CD7A36702F7884A900F32086 /* lib in Resources */,
-				CD7A36642F7884A900F32086 /* dist in Resources */,
-				CD7A36682F7884A900F32086 /* vitest.config.js in Resources */,
 				CD7A36602F7884A900F32086 /* background in Resources */,
-				CD7A366B2F7884A900F32086 /* package.json in Resources */,
 				CD7A366F2F7884A900F32086 /* manifest.json in Resources */,
-				CD7A36652F7884A900F32086 /* node_modules in Resources */,
 				CD7A36612F7884A900F32086 /* popup in Resources */,
-				CD7A36662F7884A900F32086 /* tests in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -588,7 +532,7 @@
 					"-framework",
 					WebKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.thevgergroup.Lens;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thevgergroup.lens;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -629,7 +573,7 @@
 					"-framework",
 					WebKit,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.thevgergroup.Lens;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thevgergroup.lens;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
