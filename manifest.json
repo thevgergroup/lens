@@ -37,8 +37,7 @@
 
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting"
+    "activeTab"
   ],
 
   "host_permissions": [
