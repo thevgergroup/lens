@@ -164,12 +164,30 @@ jobs:
             "$RUNNER_TEMP/export/Lens.app" \
             "$RUNNER_TEMP/Lens-notarize.zip"
 
-          # Notarize
-          xcrun notarytool submit "$RUNNER_TEMP/Lens-notarize.zip" \
+          # Notarize — submit and capture submission ID in case polling times out
+          SUBMIT_OUTPUT=$(xcrun notarytool submit "$RUNNER_TEMP/Lens-notarize.zip" \
             --key ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8 \
             --key-id "$API_KEY_ID" \
             --issuer "$API_ISSUER_ID" \
-            --wait
+            --wait \
+            --timeout 20m 2>&1) || true
+          echo "$SUBMIT_OUTPUT"
+
+          # If --wait timed out, poll until accepted (max 10 more minutes)
+          if echo "$SUBMIT_OUTPUT" | grep -q "id:"; then
+            SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | grep "id:" | head -1 | awk '{print $2}')
+            echo "Submission ID: $SUBMISSION_ID"
+            for i in $(seq 1 10); do
+              STATUS=$(xcrun notarytool info "$SUBMISSION_ID" \
+                --key ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8 \
+                --key-id "$API_KEY_ID" \
+                --issuer "$API_ISSUER_ID" 2>&1 | grep "status:" | awk '{print $2}')
+              echo "Poll $i: status=$STATUS"
+              if [ "$STATUS" = "Accepted" ]; then break; fi
+              if [ "$STATUS" = "Invalid" ]; then echo "Notarization rejected"; exit 1; fi
+              sleep 60
+            done
+          fi
 
           # Staple the notarization ticket
           xcrun stapler staple "$RUNNER_TEMP/export/Lens.app"
@@ -195,6 +213,7 @@ jobs:
   release:
     name: Create GitHub release
     needs: [build, build-safari]
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -209,6 +228,7 @@ jobs:
 
       - name: Download Safari artifact
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: lens-safari-${{ needs.build.outputs.version }}
           path: dist/
