@@ -1,0 +1,30 @@
+<html>
+<head>
+    <title>Eyes</title>
+</head>
+<body>
+    <h1>Eyes</h1>
+    <p>Eyes are the windows to the soul.</p>
+    <div class="container">
+        <img src="../images/ai/eyes.jpg" width="1200" height="627" alt="An eye">
+    </div>
+    <style>
+        img {
+            display: block;
+            margin: 20px auto;
+        }
+        .container {
+  width: 720px;
+  height: 400px;
+  overflow: hidden; /* Clips any part of the image outside 300x200 */
+  position: relative; /* Often used to help with absolute child positioning */
+}
+
+.container img {
+  object-fit: cover; /* Ensures the image covers the container without distortion */
+ object-position: -360px -100px; /* Adjusts the position of the image within the container */
+
+}
+    </style>
+</body>
+</html>
