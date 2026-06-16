@@ -1,53 +1,26 @@
 /**
  * LENS — Content Script
- * Observes page images, sends them for analysis, injects result badges.
- * Runs in page context — communicates with Service Worker via chrome.runtime.
+ * Observes page images, sends them for analysis, marks results via data attributes.
+ * No DOM wrapping — uses CSS outline/filter on the <img> directly.
  */
 
 (function () {
   'use strict';
 
-  // Avoid double-injection
   if (window.__lensInjected) return;
   window.__lensInjected = true;
 
-  const BADGE_CLASS = 'lens-badge';
-  const WRAPPER_CLASS = 'lens-wrapper';
-  const MIN_IMAGE_SIZE = 80; // px — ignore tiny icons/favicons
+  const MIN_SIZE_PX  = 150;  // ignore small icons/logos
+  const MIN_NATURAL  = 100;  // ignore tiny natural-size images
+  const MAX_ASPECT   = 5;    // ignore banners (very wide/thin strips)
 
-  // Track which images we've already processed
+  // Structural containers whose images are almost certainly UI chrome
+  const SKIP_ANCESTORS = ['header', 'nav', 'footer', 'aside'];
+
+  // Alt/aria text patterns that signal logos/icons/avatars
+  const SKIP_ALT_RE = /\b(logo|icon|avatar|badge|button|sprite|emoji|flag|seal|crest)\b/i;
+
   const processedImages = new WeakSet();
-  const pendingImages = new Map(); // img element → request id
-  let requestIdCounter = 0;
-
-  // ---------------------------------------------------------------------------
-  // Message channel to service worker
-  // ---------------------------------------------------------------------------
-
-  // Chrome: use chrome.runtime.sendMessage
-  // Firefox: same API
-  function sendToSW(type, payload) {
-    return new Promise((resolve, reject) => {
-      const id = ++requestIdCounter;
-      chrome.runtime.sendMessage({ type, payload: { ...payload }, id }, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(response);
-        }
-      });
-    });
-  }
-
-  // Listen for analysis results pushed back from service worker
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'ANALYSIS_RESULT') {
-      handleResult(message.url, message.result);
-    }
-    if (message.type === 'SETTINGS_UPDATED') {
-      applySettings(message.settings);
-    }
-  });
 
   // ---------------------------------------------------------------------------
   // Settings
@@ -55,122 +28,114 @@
 
   let settings = {
     enabled: true,
-    showOnAllImages: true,
-    minConfidenceToShow: 'possible', // 'definite' | 'likely' | 'possible' | 'all'
-    badgePosition: 'top-left',
+    minConfidenceToShow: 'possible',
     showOnHoverOnly: false,
+    highlightStyle: 'outline',  // 'outline' | 'desaturate' | 'both'
   };
 
   chrome.storage.sync.get('lensSettings', (data) => {
     if (data.lensSettings) settings = { ...settings, ...data.lensSettings };
   });
 
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'SETTINGS_UPDATED') applySettings(message.settings);
+    if (message.type === 'ANALYSIS_RESULT')  handleResult(message.url, message.result);
+  });
+
   function applySettings(newSettings) {
     settings = { ...settings, ...newSettings };
-    // Re-evaluate badge visibility
-    document.querySelectorAll(`.${BADGE_CLASS}`).forEach(badge => {
-      updateBadgeVisibility(badge);
+    document.querySelectorAll('img[data-lens-level]').forEach(img => {
+      updateHighlight(img, img.getAttribute('data-lens-level'));
     });
   }
 
   // ---------------------------------------------------------------------------
-  // Image discovery & queuing
+  // Filtering — decide whether an image is worth analysing
   // ---------------------------------------------------------------------------
 
-  function shouldAnalyze(img) {
-    if (!img || !img.src) return false;
-    if (img.src.startsWith('chrome-extension://')) return false;
-    if (img.src.startsWith('moz-extension://')) return false;
-    if (processedImages.has(img)) return false;
+  function shouldAnalyze(img, { allowProcessed = false } = {}) {
+    if (!img?.src) return false;
+    if (img.src.startsWith('chrome-extension://') || img.src.startsWith('moz-extension://')) return false;
+    if (img.src.startsWith('data:image/gif;base64,R0lGOD')) return false; // 1px GIF tracker
+    if (!allowProcessed && processedImages.has(img)) return false;
 
-    // Size check — wait for image to load to get dimensions
+    // Rendered size
     const rect = img.getBoundingClientRect();
-    const naturalW = img.naturalWidth || 0;
-    const naturalH = img.naturalHeight || 0;
+    if (rect.width < MIN_SIZE_PX || rect.height < MIN_SIZE_PX) return false;
 
-    // Must be a real image, not a 1px tracker or icon
-    if (rect.width < MIN_IMAGE_SIZE && rect.height < MIN_IMAGE_SIZE) return false;
-    if (naturalW > 0 && naturalW < 32) return false;
-    if (naturalH > 0 && naturalH < 32) return false;
+    // Natural size (if loaded)
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    if (nw > 0 && nw < MIN_NATURAL) return false;
+    if (nh > 0 && nh < MIN_NATURAL) return false;
+
+    // Extreme aspect ratio — banners, dividers, UI strips
+    if (nw > 0 && nh > 0) {
+      const ratio = Math.max(nw / nh, nh / nw);
+      if (ratio > MAX_ASPECT) return false;
+    }
+
+    // Structural UI chrome
+    if (SKIP_ANCESTORS.some(tag => img.closest(tag))) return false;
+
+    // Alt text / aria-label signals logo/icon
+    const altText = (img.alt || img.getAttribute('aria-label') || '').trim();
+    if (altText && SKIP_ALT_RE.test(altText)) return false;
+
+    // role="presentation" or role="none" → decorative
+    const role = img.getAttribute('role');
+    if (role === 'presentation' || role === 'none') return false;
+
+    // CSS background-image lookalikes with display:none
+    if (getComputedStyle(img).display === 'none') return false;
 
     return true;
   }
+
+  // ---------------------------------------------------------------------------
+  // Queue & analyse
+  // ---------------------------------------------------------------------------
 
   function queueImage(img) {
     if (!shouldAnalyze(img)) return;
     processedImages.add(img);
 
-    // Wrap image in position:relative container for badge overlay
-    wrapImage(img);
-
-    // Gather DOM signals to help with analysis
     const domSignals = {
-      altText: img.alt || '',
-      title: img.title || '',
-      ariaLabel: img.getAttribute('aria-label') || '',
+      altText:        img.alt || '',
+      title:          img.title || '',
+      ariaLabel:      img.getAttribute('aria-label') || '',
       figcaptionText: img.closest('figure')?.querySelector('figcaption')?.textContent?.trim() || '',
     };
 
-    // Send to service worker for analysis
-    console.log('[Lens] Sending ANALYZE_IMAGE for', img.src.split('/').pop());
-    sendToSW('ANALYZE_IMAGE', { url: img.src, domSignals })
-      .then(response => {
-        console.log('[Lens] Response for', img.src.split('/').pop(), JSON.stringify(response)?.slice(0, 100));
-        if (response?.result) {
-          handleResult(img.src, response.result);
-        }
-      })
-      .catch(err => {
-        console.error('[Lens] Analysis failed for', img.src.slice(0, 60), err.message);
-      });
+    // Use Promise form — Firefox drops the callback channel on async SW responses.
+    // Results come back either via the resolved promise or via ANALYSIS_RESULT push.
+    chrome.runtime.sendMessage({ type: 'ANALYZE_IMAGE', payload: { url: img.src, domSignals } })
+      .then(response => { if (response?.result) handleResult(img.src, response.result); })
+      .catch(() => {}); // SW will push ANALYSIS_RESULT if the channel closes early
   }
 
   // ---------------------------------------------------------------------------
-  // DOM wrapping & badge injection
+  // Result handling — mark image with data attribute, apply CSS highlight
   // ---------------------------------------------------------------------------
-
-  function wrapImage(img) {
-    // Don't double-wrap
-    if (img.parentElement?.classList.contains(WRAPPER_CLASS)) return;
-    if (img.closest(`.${WRAPPER_CLASS}`)) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = WRAPPER_CLASS;
-    wrapper.style.cssText = `
-      position: relative !important;
-      display: inline-block !important;
-      line-height: 0 !important;
-    `;
-
-    img.parentNode.insertBefore(wrapper, img);
-    wrapper.appendChild(img);
-
-    // Add a pending indicator
-    const pending = document.createElement('div');
-    pending.className = `${BADGE_CLASS} ${BADGE_CLASS}--pending`;
-    pending.setAttribute('aria-label', 'Analysing image…');
-    wrapper.appendChild(pending);
-  }
 
   function handleResult(url, result) {
-    // Find all images matching this URL — use a loop since CSS.escape mangles full URLs
-    const images = Array.from(document.querySelectorAll('img')).filter(img => img.src === url);
+    document.querySelectorAll('img').forEach(img => {
+      if (img.src !== url) return;
 
-    images.forEach(img => {
-      const wrapper = img.closest(`.${WRAPPER_CLASS}`);
-      if (!wrapper) return;
+      const level = result.interpretation?.level;
+      img.setAttribute('data-lens-level',      level);
+      img.setAttribute('data-lens-confidence', result.confidence);
+      img.setAttribute('data-lens-label',      result.interpretation?.label || '');
 
-      // Remove pending badge
-      wrapper.querySelectorAll(`.${BADGE_CLASS}--pending`).forEach(el => el.remove());
-
-      // Only show badge if above confidence threshold
-      if (!shouldShowBadge(result)) return;
-
-      injectBadge(wrapper, result);
+      if (shouldHighlight(result)) {
+        updateHighlight(img, level);
+      } else {
+        clearHighlight(img);
+      }
     });
   }
 
-  function shouldShowBadge(result) {
+  function shouldHighlight(result) {
     if (!settings.enabled) return false;
     const level = result.interpretation?.level;
     switch (settings.minConfidenceToShow) {
@@ -182,133 +147,56 @@
     }
   }
 
-  function injectBadge(wrapper, result) {
-    // Remove existing badge
-    wrapper.querySelectorAll(`.${BADGE_CLASS}:not(.${BADGE_CLASS}--pending)`).forEach(el => el.remove());
-
-    const { interpretation, confidence, signals } = result;
-
-    const badge = document.createElement('div');
-    badge.className = `${BADGE_CLASS} ${BADGE_CLASS}--${interpretation.level}`;
-    badge.setAttribute('data-lens-level', interpretation.level);
-    badge.setAttribute('data-lens-confidence', confidence);
-    badge.setAttribute('aria-label', `${interpretation.label} (${confidence}% confidence)`);
-    badge.setAttribute('role', 'status');
-
-    // Badge inner HTML
-    const topSignal = signals?.[0];
-    badge.innerHTML = `
-      <span class="${BADGE_CLASS}__icon" aria-hidden="true">${getLevelIcon(interpretation.level)}</span>
-      <span class="${BADGE_CLASS}__label">${interpretation.label}</span>
-      <span class="${BADGE_CLASS}__confidence">${confidence}%</span>
-      ${topSignal ? `<div class="${BADGE_CLASS}__tooltip">
-        <div class="${BADGE_CLASS}__tooltip-title">${interpretation.label} · ${confidence}% confidence</div>
-        <div class="${BADGE_CLASS}__tooltip-signals">
-          ${signals.slice(0, 4).map(s => `
-            <div class="${BADGE_CLASS}__signal">
-              <span class="${BADGE_CLASS}__signal-type">${s.type.toUpperCase()}</span>
-              <span class="${BADGE_CLASS}__signal-label">${escapeHtml(s.label)}</span>
-            </div>
-          `).join('')}
-          ${signals.length > 4 ? `<div class="${BADGE_CLASS}__signal-more">+${signals.length - 4} more signals</div>` : ''}
-        </div>
-      </div>` : ''}
-    `;
-
-    // Position badge
-    badge.style.setProperty('--badge-color', interpretation.color);
-
-    if (settings.showOnHoverOnly) {
-      badge.classList.add(`${BADGE_CLASS}--hover-only`);
-    }
-
-    wrapper.appendChild(badge);
-
-    updateBadgeVisibility(badge);
+  function updateHighlight(img, level) {
+    if (!settings.enabled) { clearHighlight(img); return; }
+    img.setAttribute('data-lens-highlight', settings.highlightStyle || 'outline');
+    img.setAttribute('data-lens-hover-only', settings.showOnHoverOnly ? 'true' : 'false');
   }
 
-  function updateBadgeVisibility(badge) {
-    if (settings.showOnHoverOnly) {
-      badge.classList.add(`${BADGE_CLASS}--hover-only`);
-    } else {
-      badge.classList.remove(`${BADGE_CLASS}--hover-only`);
-    }
-  }
-
-  function getLevelIcon(level) {
-    switch (level) {
-      case 'definite':  return '⬡'; // Hexagon — definite AI
-      case 'likely':    return '◈'; // Diamond — likely AI
-      case 'possible':  return '◇'; // Open diamond — possible
-      case 'unlikely':  return '○'; // Circle — probably real
-      case 'clean':     return '✓'; // Check — no signals
-      default:          return '?';
-    }
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+  function clearHighlight(img) {
+    img.removeAttribute('data-lens-highlight');
   }
 
   // ---------------------------------------------------------------------------
-  // Observation: initial scan + MutationObserver + IntersectionObserver
+  // Observation
   // ---------------------------------------------------------------------------
 
-  // Use IntersectionObserver to only process visible images (performance)
   const intersectionObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const img = entry.target;
-        intersectionObserver.unobserve(img);
-
-        if (img.complete && img.naturalWidth > 0) {
-          queueImage(img);
-        } else {
-          img.addEventListener('load', () => queueImage(img), { once: true });
-        }
+      if (!entry.isIntersecting) return;
+      const img = entry.target;
+      intersectionObserver.unobserve(img);
+      if (img.complete && img.naturalWidth > 0) {
+        queueImage(img);
+      } else {
+        img.addEventListener('load', () => queueImage(img), { once: true });
       }
     });
-  }, {
-    rootMargin: '200px', // Pre-load slightly off-screen
-    threshold: 0,
-  });
+  }, { rootMargin: '200px', threshold: 0 });
 
   function observeImage(img) {
     if (processedImages.has(img)) return;
-    if (!img.src || img.src.startsWith('data:image/gif;base64,R0lGOD')) return; // 1px GIF
+    if (!img.src) return;
     intersectionObserver.observe(img);
   }
 
-  // Initial scan
   function scanPage() {
     if (!settings.enabled) return;
     document.querySelectorAll('img[src]').forEach(observeImage);
-
-    // Also handle <picture> elements
-    document.querySelectorAll('picture img').forEach(observeImage);
   }
 
-  // Watch for dynamically added images (SPAs, infinite scroll)
   const mutationObserver = new MutationObserver((mutations) => {
     if (!settings.enabled) return;
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
         if (node.nodeType !== Node.ELEMENT_NODE) continue;
-        if (node.tagName === 'IMG' && node.src) {
-          observeImage(node);
-        }
-        // Check descendants
+        if (node.tagName === 'IMG' && node.src) observeImage(node);
         node.querySelectorAll?.('img[src]').forEach(observeImage);
       }
-
-      // Handle src attribute changes
       if (mutation.type === 'attributes' && mutation.target.tagName === 'IMG') {
         const img = mutation.target;
-        processedImages.delete(img); // Allow re-analysis on src change
+        processedImages.delete(img);
+        clearHighlight(img);
         observeImage(img);
       }
     }
@@ -321,34 +209,41 @@
     attributeFilter: ['src'],
   });
 
-  // Kick off initial scan
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', scanPage);
   } else {
     scanPage();
   }
 
-  // Also scan after full page load (lazy-loaded images)
-  window.addEventListener('load', () => {
-    setTimeout(scanPage, 500);
-  });
+  window.addEventListener('load', () => setTimeout(scanPage, 500));
 
   // ---------------------------------------------------------------------------
-  // Popup communication — expose page image list
+  // Popup communication
   // ---------------------------------------------------------------------------
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'GET_PAGE_IMAGES') {
+      // Report images that either passed our filter or already have a result.
+      // Dedup by URL — CDN variants with different query params count as one entry.
+      const seen = new Set();
       const images = Array.from(document.querySelectorAll('img[src]'))
-        .filter(img => img.src && !img.src.startsWith('chrome-extension://'))
+        .filter(img => {
+          if (!img.src || seen.has(img.src)) return false;
+          // Include if already analysed or eligible for analysis
+          if (img.hasAttribute('data-lens-level')) { seen.add(img.src); return true; }
+          if (shouldAnalyze(img, { allowProcessed: true })) { seen.add(img.src); return true; }
+          return false;
+        })
         .map(img => ({
-          src: img.src,
-          width: img.naturalWidth,
-          height: img.naturalHeight,
-          alt: img.alt,
+          src:        img.src,
+          width:      img.naturalWidth,
+          height:     img.naturalHeight,
+          alt:        img.alt,
+          level:      img.getAttribute('data-lens-level') || null,
+          confidence: img.getAttribute('data-lens-confidence') || null,
+          label:      img.getAttribute('data-lens-label') || null,
         }))
-        .slice(0, 200); // Cap at 200
-
+        .slice(0, 200);
       sendResponse({ images });
       return false;
     }
@@ -356,11 +251,11 @@
     if (message.type === 'TOGGLE_ENABLED') {
       settings.enabled = message.enabled;
       if (!settings.enabled) {
-        document.querySelectorAll(`.${WRAPPER_CLASS}`).forEach(wrapper => {
-          wrapper.querySelectorAll(`.${BADGE_CLASS}`).forEach(b => b.style.display = 'none');
-        });
+        document.querySelectorAll('img[data-lens-highlight]').forEach(clearHighlight);
       } else {
-        document.querySelectorAll(`.${BADGE_CLASS}`).forEach(b => b.style.display = '');
+        document.querySelectorAll('img[data-lens-level]').forEach(img => {
+          updateHighlight(img, img.getAttribute('data-lens-level'));
+        });
         scanPage();
       }
       return false;

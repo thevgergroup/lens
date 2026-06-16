@@ -105,6 +105,55 @@ Served from `tests/fixtures/` at `http://localhost:3456`:
 ### Screenshots
 Integration tests save screenshots to `tests/integration/screenshots/` for visual review.
 
+## UI & Styling
+
+### Design Language
+
+Forensic/lab terminal aesthetic: deep black backgrounds, monospace accents, high-contrast confidence colors, minimal animations.
+
+**Fonts:** Space Mono (header/badges), Inter (body text)  
+**Popup size:** Fixed 360px wide, 200–560px tall
+
+### CSS Custom Properties (`popup/popup.css`)
+
+All semantic colors are defined as custom properties on `:root`:
+
+```css
+--bg: #0A0C10          /* deep background */
+--c-definite: #FC8181  /* red  — AI confirmed */
+--c-likely:   #F6AD55  /* orange */
+--c-possible: #F6E05E  /* yellow */
+--c-clean:    #68D391  /* green */
+--c-pending:  #90CDF4  /* blue */
+```
+
+### Popup Structure (`popup/popup.html` + `popup/popup.js`)
+
+```
+Header (logo + "LENS" wordmark + enable toggle)
+Summary bar (5-stat grid: Scanning / Definite / Likely / Possible / Clean)
+Filter tabs (Flagged | All | Settings) — role=tablist, accessible
+Results list — scrollable, aria-labeled
+Settings panel — confidence threshold, hover-only toggle, badge position, cache clear
+Footer — hostname + cache count badge
+```
+
+Popup polls the service worker every 600ms via `chrome.runtime.sendMessage({ type: 'GET_TAB_STATS' })`.
+
+### Badge Styling (`content/content.css`)
+
+Badges are injected by the content script as `.lens-badge` inside a `.lens-wrapper` (position: relative) wrapping the original `<img>`. Use `!important` on badge styles to resist host-page CSS.
+
+- Entrance animation: slide-in + scale (0.18s)
+- Pending state: pulse animation
+- Tooltip: hover-triggered, dark background, signal labels — JS handles viewport-edge clipping
+- Badge position (top-left default) is user-configurable via `badgePosition` setting in `chrome.storage.sync`
+- Respects `prefers-reduced-motion` and `forced-colors: active` (high contrast mode)
+
+### Naming Conventions
+
+BEM-like: `.header`, `.header__logo`, `.summary__stat`, `.filter`, `.setting`. Avoid generic names that could collide with host-page styles.
+
 ## Key Constraints
 
 - **No external HTTP requests** — all analysis is local

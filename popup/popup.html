@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=380, initial-scale=1">
+  <meta name="viewport" content="width=440, initial-scale=1">
   <title>Lens — AI Image Detector</title>
   <link rel="stylesheet" href="popup.css">
 </head>
@@ -52,12 +52,12 @@
   <!-- Filter tabs -->
   <nav class="filters" role="tablist" aria-label="Filter results">
     <button class="filter filter--active" data-filter="flagged" role="tab" aria-selected="true">Flagged</button>
-    <button class="filter" data-filter="all" role="tab" aria-selected="false">All</button>
+    <button class="filter" data-filter="images" role="tab" aria-selected="false">Images</button>
     <button class="filter" data-filter="settings" role="tab" aria-selected="false">Settings</button>
   </nav>
 
-  <!-- Results list -->
-  <main class="results" id="results" role="tabpanel">
+  <!-- Results list (Flagged tab) -->
+  <main class="results" id="results" role="tabpanel" aria-label="Flagged images">
     <div class="results__empty" id="emptyState">
       <div class="results__empty-icon">◈</div>
       <div class="results__empty-text">Scanning images on this page…</div>
@@ -65,10 +65,19 @@
     <ul class="results__list" id="resultsList" aria-label="Detected images"></ul>
   </main>
 
+  <!-- Image gallery (Images tab) -->
+  <section class="gallery" id="galleryPanel" hidden aria-label="All images on page">
+    <div class="gallery__empty" id="galleryEmpty">
+      <div class="results__empty-icon">◈</div>
+      <div class="results__empty-text">No images found.</div>
+    </div>
+    <div class="gallery__grid" id="galleryGrid"></div>
+  </section>
+
   <!-- Settings panel -->
   <section class="settings-panel" id="settingsPanel" hidden aria-label="Settings">
     <div class="setting">
-      <label class="setting__label" for="minConfidence">Show badges for</label>
+      <label class="setting__label" for="minConfidence">Highlight images rated</label>
       <select class="setting__select" id="minConfidence">
         <option value="definite">Definite AI only (90%+)</option>
         <option value="likely">Likely AI and above (70%+)</option>
@@ -77,19 +86,18 @@
       </select>
     </div>
     <div class="setting">
-      <label class="setting__label setting__label--inline" for="hoverOnly">
-        Show badges on hover only
-        <input type="checkbox" id="hoverOnly" class="setting__checkbox">
-      </label>
+      <label class="setting__label" for="highlightStyle">Highlight style</label>
+      <select class="setting__select" id="highlightStyle">
+        <option value="outline" selected>Outline only</option>
+        <option value="desaturate">Desaturate only</option>
+        <option value="both">Outline + desaturate</option>
+      </select>
     </div>
     <div class="setting">
-      <label class="setting__label" for="badgePosition">Badge position</label>
-      <select class="setting__select" id="badgePosition">
-        <option value="top-left" selected>Top left</option>
-        <option value="top-right">Top right</option>
-        <option value="bottom-left">Bottom left</option>
-        <option value="bottom-right">Bottom right</option>
-      </select>
+      <label class="setting__label setting__label--inline" for="hoverOnly">
+        Show highlight on hover only
+        <input type="checkbox" id="hoverOnly" class="setting__checkbox">
+      </label>
     </div>
     <div class="setting setting--info">
       <p class="setting__note">

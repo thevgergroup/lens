@@ -35,7 +35,7 @@
 }
 
 html {
-  width: 360px;
+  width: 440px;
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
@@ -43,9 +43,9 @@ html {
 }
 
 body {
-  width: 360px;
+  width: 440px;
   min-height: 200px;
-  max-height: 560px;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -534,3 +534,123 @@ body {
   border: 1px solid var(--border);
   flex-shrink: 0;
 }
+
+/* ── Image gallery ───────────────────────────────────────────────────────── */
+
+.gallery {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 120px;
+  max-height: 420px;
+}
+
+.gallery[hidden] { display: none; }
+
+.gallery__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+
+.gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 3px;
+}
+
+/* ── Gallery card ────────────────────────────────────────────────────────── */
+
+.gallery-card {
+  position: relative;
+  cursor: pointer;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg-3);
+  aspect-ratio: 1;
+}
+
+.gallery-card:hover .gallery-card__overlay {
+  opacity: 1;
+}
+
+.gallery-card__img-wrap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.gallery-card__img-wrap--error::after {
+  content: '—';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.gallery-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-card__overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 5px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.75));
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+/* always show overlay for flagged cards */
+.gallery-card--definite .gallery-card__overlay,
+.gallery-card--likely   .gallery-card__overlay,
+.gallery-card--possible .gallery-card__overlay {
+  opacity: 1;
+}
+
+.gallery-card__label {
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gallery-card__confidence {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* left border accent per confidence level */
+.gallery-card--definite { box-shadow: inset 0 0 0 2px var(--c-definite); }
+.gallery-card--likely   { box-shadow: inset 0 0 0 2px var(--c-likely); }
+.gallery-card--possible { box-shadow: inset 0 0 0 1px var(--c-possible); }
+.gallery-card--pending  { opacity: 0.5; }
+
+.gallery-card--definite .gallery-card__label { color: var(--c-definite); }
+.gallery-card--likely   .gallery-card__label { color: var(--c-likely); }
+.gallery-card--possible .gallery-card__label { color: var(--c-possible); }

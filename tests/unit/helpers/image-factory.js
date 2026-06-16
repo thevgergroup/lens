@@ -22,12 +22,13 @@ export function makeRealCameraImageData(width = 128, height = 128) {
 
 /**
  * Creates ImageData simulating an AI-generated image.
- * Specifically designed to trigger L3 heuristics:
+ * Triggers L3 heuristics:
  *
  * - LSB entropy < 0.85: structured LSBs (every pixel LSB = 0)
- * - Gradient < 8 AND totalPixels > 10000: very smooth (constant color regions)
- * - |corrRG| > 0.97: R and G channels nearly identical
+ * - Gradient < 8 AND totalPixels > 10000: very smooth
+ * - |corrRG| > 0.97 AND |corrRB| > 0.95: channels tightly coupled
  * - avgNoise < 1.2 AND totalPixels > 50000: very low local noise
+ * - highSatFrac > 0.08: many vivid pixels (AI color bias)
  *
  * Use width=256, height=256 (65536 px) to trigger the noise floor check.
  */
@@ -36,16 +37,17 @@ export function makeAIImageData(width = 256, height = 256) {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
-      // Almost constant color (tiny variation → very low gradient AND low noise)
-      // Use a very gentle slope so gradient << 8
-      const base = 128 + Math.floor((x / width) * 4); // range 128–132
-      // R and G nearly identical → |corrRG| > 0.97
-      data[idx] = base;
-      data[idx + 1] = base;       // G = R → perfect correlation
-      data[idx + 2] = base - 1;
+      // Smooth gradient with vivid, highly-correlated colors.
+      // R and G track each other tightly (corrRG > 0.97), B also high (corrRB > 0.95).
+      // Values are shifted toward high-saturation territory (high R, low B)
+      // so that (R-B)/R > 0.6 for many pixels → highSatFrac fires.
+      const base = 180 + Math.floor((x / width) * 6); // range 180–186, gentle slope
+      data[idx]     = base;          // R — high
+      data[idx + 1] = base - 1;     // G ≈ R → corrRG > 0.97
+      data[idx + 2] = Math.floor(base * 0.25); // B much lower → vivid, corrRB high
       data[idx + 3] = 255;
-      // Clear LSBs to force structured LSB entropy (< 0.85)
-      data[idx] &= 0xfe;
+      // Structured LSBs → LSB entropy < 0.85
+      data[idx]     &= 0xfe;
       data[idx + 1] &= 0xfe;
       data[idx + 2] &= 0xfe;
     }

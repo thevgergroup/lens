@@ -60,10 +60,10 @@ describe('L3: Pixel statistics — AI-like smooth gradient', () => {
     }
   });
 
-  it('score does not exceed 0.55 (L3 max cap)', () => {
+  it('score does not exceed 0.65 (L3 max cap)', () => {
     const img = makeAIImageData(512, 512);
     const result = analyzePixelStatistics(img);
-    expect(result.score).toBeLessThanOrEqual(0.55);
+    expect(result.score).toBeLessThanOrEqual(0.65);
   });
 });
 
