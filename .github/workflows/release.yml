@@ -213,9 +213,101 @@ jobs:
           path: dist/lens-${{ steps.version.outputs.version }}-mac.dmg
           retention-days: 30
 
+  publish-chrome:
+    name: Publish to Chrome Web Store
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Chrome/Firefox artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lens-${{ needs.build.outputs.version }}
+          path: dist/
+
+      - name: Install cryptography for JWT signing
+        run: pip install cryptography --quiet
+
+      - name: Exchange service account key for access token
+        id: token
+        run: |
+          SA_JSON='${{ secrets.CWS_SERVICE_ACCOUNT_JSON }}'
+          # Extract fields from the service account JSON
+          CLIENT_EMAIL=$(echo "$SA_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['client_email'])")
+          PRIVATE_KEY=$(echo "$SA_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['private_key'])")
+
+          # Build and sign a JWT for the token exchange
+          ACCESS_TOKEN=$(python3 << 'PYEOF'
+          import json, time, base64, urllib.request, urllib.parse
+          import os
+
+          sa = json.loads(os.environ['SA_JSON'])
+          email = sa['client_email']
+          key_pem = sa['private_key']
+
+          from cryptography.hazmat.primitives import serialization, hashes
+          from cryptography.hazmat.primitives.asymmetric import padding
+          from cryptography.hazmat.backends import default_backend
+
+          now = int(time.time())
+          header = base64.urlsafe_b64encode(json.dumps({"alg":"RS256","typ":"JWT"}).encode()).rstrip(b'=').decode()
+          payload = base64.urlsafe_b64encode(json.dumps({
+            "iss": email, "scope": "https://www.googleapis.com/auth/chromewebstore",
+            "aud": "https://oauth2.googleapis.com/token", "exp": now+3600, "iat": now
+          }).encode()).rstrip(b'=').decode()
+          msg = f"{header}.{payload}".encode()
+          key = serialization.load_pem_private_key(key_pem.encode(), password=None, backend=default_backend())
+          sig = base64.urlsafe_b64encode(key.sign(msg, padding.PKCS1v15(), hashes.SHA256())).rstrip(b'=').decode()
+          jwt = f"{header}.{payload}.{sig}"
+
+          data = urllib.parse.urlencode({"grant_type":"urn:ietf:params:oauth:grant-type:jwt-bearer","assertion":jwt}).encode()
+          req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
+          resp = json.loads(urllib.request.urlopen(req).read())
+          print(resp['access_token'])
+          PYEOF
+          )
+          echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
+        env:
+          SA_JSON: ${{ secrets.CWS_SERVICE_ACCOUNT_JSON }}
+
+      - name: Upload zip to Chrome Web Store
+        run: |
+          ZIP="dist/lens-${{ needs.build.outputs.version }}.zip"
+          curl -s -X PUT \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${{ secrets.CWS_EXTENSION_ID }}" \
+            -H "Authorization: Bearer ${{ steps.token.outputs.access_token }}" \
+            -H "x-goog-api-version: 2" \
+            -T "$ZIP" | tee /tmp/upload-response.json
+          # Fail if upload was not successful
+          python3 -c "
+          import json, sys
+          r = json.load(open('/tmp/upload-response.json'))
+          if r.get('uploadState') != 'SUCCESS':
+              print('Upload failed:', r)
+              sys.exit(1)
+          print('Upload OK')
+          "
+
+      - name: Publish to Chrome Web Store
+        run: |
+          curl -s -X POST \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${{ secrets.CWS_EXTENSION_ID }}/publish" \
+            -H "Authorization: Bearer ${{ steps.token.outputs.access_token }}" \
+            -H "x-goog-api-version: 2" \
+            -H "Content-Length: 0" | tee /tmp/publish-response.json
+          python3 -c "
+          import json, sys
+          r = json.load(open('/tmp/publish-response.json'))
+          status = r.get('status', [])
+          if 'OK' in status or 'ITEM_PENDING_REVIEW' in status:
+              print('Publish OK:', status)
+          else:
+              print('Publish failed:', r)
+              sys.exit(1)
+          "
+
   release:
     name: Create GitHub release
-    needs: [build, build-safari]
+    needs: [build, build-safari, publish-chrome]
     if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
