@@ -18,6 +18,9 @@ import {
 const resultCache = new Map();
 const MAX_CACHE_SIZE = 500;
 
+// Per-tab URL tracking for badge counts: tabId → Set<url>
+const tabUrls = new Map();
+
 // Concurrent analysis throttle — don't hammer all images at once
 const analysisQueue = new Map(); // url → Promise
 const MAX_CONCURRENT = 4;
@@ -67,7 +70,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Check cache for immediate inline response
     if (resultCache.has(url)) {
       console.log(`[Lens SW] Cache hit: ${shortUrl}`);
-      sendResponse({ result: resultCache.get(url), fromCache: true });
+      const cached = resultCache.get(url);
+      if (tabId != null) { trackTabUrl(tabId, url); updateTabBadge(tabId); }
+      sendResponse({ result: cached, fromCache: true });
       return false;
     }
 
@@ -75,15 +80,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // during async fetch+decode (MV3 SW can be suspended mid-flight otherwise)
     const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000);
 
+    const tabId = sender?.tab?.id;
+
     analyzeImage(url, domSignals || {})
       .then(result => {
         cacheResult(url, result);
         logResult(shortUrl, result);
-        sendResponse({ result, fromCache: false });
+        if (tabId != null) {
+          trackTabUrl(tabId, url);
+          updateTabBadge(tabId);
+          chrome.tabs.sendMessage(tabId, { type: 'ANALYSIS_RESULT', url, result }).catch(() => {});
+        }
+        // Send via response channel (Chrome) AND push to tab (Firefox fallback)
+        try { sendResponse({ result, fromCache: false }); } catch (_) {}
       })
       .catch(err => {
         console.warn(`[Lens SW] Analysis error for ${shortUrl}:`, err.message);
-        sendResponse({ error: err.message });
+        try { sendResponse({ error: err.message }); } catch (_) {}
       })
       .finally(() => clearInterval(keepAlive));
 
@@ -91,10 +104,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'GET_TAB_STATS') {
-    // Collect stats for all cached results from the active tab
-    const stats = buildStats(message.urls || []);
-    sendResponse({ stats });
-    return true;
+    const urls = message.urls || [];
+    const stats = buildStats(urls);
+    // Also return the full results map so the popup can render without a separate round-trip
+    const resultMap = {};
+    for (const url of urls) {
+      if (resultCache.has(url)) resultMap[url] = resultCache.get(url);
+    }
+    sendResponse({ stats, results: resultMap });
+    return false;
   }
 
   if (message.type === 'ANALYZE_IMAGE_POPUP') {
@@ -418,5 +436,45 @@ function hashUrl(url) {
   }
   return hash.toString(36);
 }
+
+// ---------------------------------------------------------------------------
+// Toolbar badge
+// ---------------------------------------------------------------------------
+
+function trackTabUrl(tabId, url) {
+  if (!tabUrls.has(tabId)) tabUrls.set(tabId, new Set());
+  tabUrls.get(tabId).add(url);
+}
+
+function updateTabBadge(tabId) {
+  const urls = tabUrls.get(tabId);
+  if (!urls) return;
+
+  let flagged = 0;
+  for (const url of urls) {
+    const result = resultCache.get(url);
+    if (!result) continue;
+    const level = result.interpretation?.level;
+    if (level === 'definite' || level === 'likely' || level === 'possible') flagged++;
+  }
+
+  const text   = flagged > 0 ? String(flagged) : '';
+  const color  = flagged > 0 ? '#E53E3E' : '#4A5568';
+
+  chrome.action.setBadgeText({ text, tabId }).catch(() => {});
+  chrome.action.setBadgeBackgroundColor({ color, tabId }).catch(() => {});
+}
+
+// Clear badge and URL tracking when tab navigates or closes
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'loading') {
+    tabUrls.delete(tabId);
+    chrome.action.setBadgeText({ text: '', tabId }).catch(() => {});
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  tabUrls.delete(tabId);
+});
 
 console.log('[Lens SW] Service worker initialised');
