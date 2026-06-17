@@ -7,7 +7,7 @@
 import sharp from 'sharp';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readdirSync } from 'fs';
+import { readdirSync, statSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const IMAGES_DIR = join(__dirname, 'images');
@@ -105,8 +105,22 @@ async function analyzeImage(relPath) {
   }
 }
 
-const AI_IMAGES = readdirSync(join(IMAGES_DIR, 'ai')).filter(f => /\.(jpg|jpeg|png|webp)$/.test(f)).map(f => `ai/${f}`);
-const REAL_IMAGES = readdirSync(join(IMAGES_DIR, 'real')).filter(f => /\.(jpg|jpeg|png|webp)$/.test(f)).map(f => `real/${f}`);
+function collectImages(dir, prefix) {
+  const results = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const rel = `${prefix}/${entry}`;
+    if (statSync(full).isDirectory()) {
+      results.push(...collectImages(full, rel));
+    } else if (/\.(jpg|jpeg|png|webp)$/.test(entry)) {
+      results.push(rel);
+    }
+  }
+  return results;
+}
+
+const AI_IMAGES = collectImages(join(IMAGES_DIR, 'ai'), 'ai');
+const REAL_IMAGES = collectImages(join(IMAGES_DIR, 'real'), 'real');
 
 let aiFalseNeg = 0, realFalsePos = 0;
 
