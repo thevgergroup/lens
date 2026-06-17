@@ -1,0 +1,89 @@
+name: Publish to Chrome Web Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to publish (e.g. 1.2.0)'
+        required: true
+
+jobs:
+  publish-chrome:
+    name: Publish to Chrome Web Store
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ github.event.inputs.version }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build Chrome zip
+        run: npm run package
+
+      - name: Publish to Chrome Web Store
+        env:
+          CWS_CLIENT_EMAIL: ${{ secrets.CWS_CLIENT_EMAIL }}
+          CWS_PRIVATE_KEY: ${{ secrets.CWS_PRIVATE_KEY }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          pip install cryptography --quiet
+
+          python3 << 'PYEOF'
+          import os, time, json, base64, urllib.request, urllib.parse
+          from cryptography.hazmat.primitives.serialization import load_pem_private_key
+          from cryptography.hazmat.primitives.asymmetric import padding
+          from cryptography.hazmat.primitives import hashes
+
+          client_email = os.environ['CWS_CLIENT_EMAIL']
+          private_key_pem = os.environ['CWS_PRIVATE_KEY'].replace('\\n', '\n').encode()
+          extension_id = os.environ['CWS_EXTENSION_ID']
+
+          now = int(time.time())
+          header = base64.urlsafe_b64encode(json.dumps({"alg":"RS256","typ":"JWT"}).encode()).rstrip(b'=')
+          payload = base64.urlsafe_b64encode(json.dumps({
+            "iss": client_email,
+            "scope": "https://www.googleapis.com/auth/chromewebstore",
+            "aud": "https://oauth2.googleapis.com/token",
+            "iat": now, "exp": now + 3600
+          }).encode()).rstrip(b'=')
+          msg = header + b'.' + payload
+          key = load_pem_private_key(private_key_pem, password=None)
+          sig = base64.urlsafe_b64encode(key.sign(msg, padding.PKCS1v15(), hashes.SHA256())).rstrip(b'=')
+          jwt = (msg + b'.' + sig).decode()
+
+          resp = urllib.request.urlopen(urllib.request.Request(
+            'https://oauth2.googleapis.com/token',
+            data=urllib.parse.urlencode({'grant_type':'urn:ietf:params:oauth:grant-type:jwt-bearer','assertion':jwt}).encode(),
+            headers={'Content-Type':'application/x-www-form-urlencoded'}
+          ))
+          token = json.loads(resp.read())['access_token']
+
+          version = os.environ['VERSION']
+          zip_path = f"dist/lens-{version}.zip"
+
+          with open(zip_path, 'rb') as f:
+            upload_req = urllib.request.Request(
+              f'https://www.googleapis.com/upload/chromewebstore/v1.1/items/{extension_id}',
+              data=f.read(), method='PUT',
+              headers={'Authorization': f'Bearer {token}', 'x-goog-api-version': '2'}
+            )
+          upload_resp = json.loads(urllib.request.urlopen(upload_req).read())
+          print('Upload:', upload_resp.get('uploadState'))
+          assert upload_resp.get('uploadState') == 'SUCCESS', f"Upload failed: {upload_resp}"
+
+          pub_req = urllib.request.Request(
+            f'https://www.googleapis.com/chromewebstore/v1.1/items/{extension_id}/publish',
+            data=b'{}', method='POST',
+            headers={'Authorization': f'Bearer {token}', 'x-goog-api-version': '2', 'Content-Type': 'application/json'}
+          )
+          pub_resp = json.loads(urllib.request.urlopen(pub_req).read())
+          print('Publish:', pub_resp.get('status'))
+          assert pub_resp.get('status')[0] in ('OK', 'ITEM_PENDING_REVIEW'), f"Publish failed: {pub_resp}"
+          PYEOF
