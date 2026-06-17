@@ -15,8 +15,9 @@
     "sign:firefox": "node scripts/sign-firefox.js"
   },
   "devDependencies": {
-    "vitest": "^2.0.0",
     "serve": "^14.0.0",
+    "sharp": "^0.35.1",
+    "vitest": "^2.0.0",
     "web-ext": "^8.0.0"
   }
 }
