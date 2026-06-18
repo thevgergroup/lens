@@ -1,67 +1,90 @@
 #!/usr/bin/env python3
 """
-Downloads 20 images from DiffusionDB (CC0 license) for pixel statistics testing.
+Download images from DiffusionDB (CC0 license) for training data.
+Downloads zip shards directly from HuggingFace without using the datasets library.
 
-Requires:
-  pip install datasets Pillow
+Each shard contains ~1000 Stable Diffusion generated images in webp format.
+Saves to: tests/fixtures/images/ai/diffusiondb/
 
-These images are used to test Layer 3 (statistical pixel analysis) because they
-are unmodified Stable Diffusion outputs with full pixel fidelity (no EXIF stripping).
+Usage:
+  python3 tests/fixtures/download-diffusiondb.py             # 1 shard (~1000 images, 527MB)
+  python3 tests/fixtures/download-diffusiondb.py --shards 2  # 2 shards (~2000 images)
 """
 
-import os
+import argparse
+import urllib.request
+import zipfile
+import shutil
 import sys
 from pathlib import Path
 
-DEST_DIR = Path(__file__).parent / "images" / "ai"
-NUM_IMAGES = 20
+HF_BASE = "https://huggingface.co/datasets/poloclub/diffusiondb/resolve/main"
+SHARD_TEMPLATE = "diffusiondb-large-part-1/part-{n:06d}.zip"
+SHARD_SIZE_MB = 527
+
+TMP_DIR = Path("/tmp/diffusiondb-dl")
+OUT_DIR = Path(__file__).parent / "images" / "ai" / "diffusiondb"
+
+
+def download_shard(shard_num: int, dest: Path) -> bool:
+    url = f"{HF_BASE}/{SHARD_TEMPLATE.format(n=shard_num)}"
+    print(f"Downloading shard {shard_num:06d} (~{SHARD_SIZE_MB}MB)...")
+    print(f"  {url}")
+
+    def progress(count, block, total):
+        pct = min(100, count * block * 100 // max(total, 1))
+        print(f"\r  {pct}%", end="", flush=True)
+
+    try:
+        urllib.request.urlretrieve(url, dest, reporthook=progress)
+        print()
+        return True
+    except Exception as e:
+        print(f"\n  Error: {e}")
+        return False
+
+
+def extract_shard(zip_path: Path, out_dir: Path, offset: int) -> int:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    extracted = 0
+    with zipfile.ZipFile(zip_path) as zf:
+        names = [n for n in zf.namelist() if n.lower().endswith(('.webp', '.png', '.jpg', '.jpeg'))]
+        for name in names:
+            dst = out_dir / f"diffusiondb-{offset + extracted:04d}.webp"
+            if not dst.exists():
+                data = zf.read(name)
+                dst.write_bytes(data)
+            extracted += 1
+    return extracted
 
 
 def main():
-    try:
-        from datasets import load_dataset
-        from PIL import Image
-    except ImportError:
-        print("Missing dependencies. Install with:")
-        print("  pip install datasets Pillow")
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--shards', type=int, default=1, help='Number of shards to download (each ~1000 images)')
+    args = parser.parse_args()
 
-    DEST_DIR.mkdir(parents=True, exist_ok=True)
+    TMP_DIR.mkdir(exist_ok=True)
+    existing = list(OUT_DIR.glob("*.webp"))
+    print(f"Existing DiffusionDB images: {len(existing)}")
 
-    existing = list(DEST_DIR.glob("diffusiondb-*.png"))
-    if len(existing) >= NUM_IMAGES:
-        print(f"✓ Already have {len(existing)} DiffusionDB images, skipping download.")
-        return
+    total = 0
+    for i in range(1, args.shards + 1):
+        zip_path = TMP_DIR / f"part-{i:06d}.zip"
 
-    print(f"Downloading {NUM_IMAGES} images from DiffusionDB (large_random_1k subset)...")
-    print("This streams a small slice without downloading the full 2M dataset.\n")
+        if not zip_path.exists():
+            ok = download_shard(i, zip_path)
+            if not ok:
+                print(f"Failed to download shard {i}, stopping.")
+                break
+        else:
+            print(f"Using cached shard {i}: {zip_path}")
 
-    ds = load_dataset(
-        "poloclub/diffusiondb",
-        "large_random_1k",
-        split="train",
-        trust_remote_code=True,
-    )
+        n = extract_shard(zip_path, OUT_DIR, offset=len(list(OUT_DIR.glob("*.webp"))))
+        total += n
+        print(f"  Extracted {n} images from shard {i}")
 
-    downloaded = 0
-    for i, item in enumerate(ds):
-        if downloaded >= NUM_IMAGES:
-            break
-        dest = DEST_DIR / f"diffusiondb-{downloaded:03d}.png"
-        if dest.exists():
-            downloaded += 1
-            continue
-        img = item["image"]
-        if img is None:
-            continue
-        # Ensure minimum size for pixel stats testing (Layer 3 needs >100px, Layer 4 needs 64x64)
-        if img.width < 64 or img.height < 64:
-            continue
-        img.save(dest, "PNG")
-        print(f"  ✓ {dest.name} ({img.width}x{img.height})")
-        downloaded += 1
-
-    print(f"\nDownloaded {downloaded} images to {DEST_DIR}")
+    print(f"\nDone: {total} new images → {OUT_DIR}")
+    print(f"Total in directory: {len(list(OUT_DIR.glob('*.webp')))}")
 
 
 if __name__ == "__main__":

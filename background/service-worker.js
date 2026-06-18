@@ -13,6 +13,88 @@ import {
   CONFIDENCE_THRESHOLDS,
 } from '../lib/detector.js';
 
+import {
+  setWasmPaths,
+  loadGraphModel,
+  tensor4d,
+  tidy,
+  setBackend,
+  ready,
+} from '../lib/tfjs/tfjs.min.js';
+
+// ---------------------------------------------------------------------------
+// MobileNetV3 model — loaded once, reused for all analyses
+// ---------------------------------------------------------------------------
+
+const IMAGENET_MEAN = [0.485, 0.456, 0.406];
+const IMAGENET_STD  = [0.229, 0.224, 0.225];
+
+let mobileNetModel = null;
+let mobileNetLoading = null;
+
+async function getMobileNet() {
+  if (mobileNetModel) return mobileNetModel;
+  if (mobileNetLoading) return mobileNetLoading;
+
+  mobileNetLoading = (async () => {
+    try {
+      const wasmBase = chrome.runtime.getURL('lib/tfjs/');
+      setWasmPaths(wasmBase);
+      await setBackend('wasm');
+      await ready();
+
+      const modelUrl = chrome.runtime.getURL('lib/mobilenet-tfjs/model.json');
+      mobileNetModel = await loadGraphModel(modelUrl);
+      console.log('[Lens SW] MobileNet model loaded');
+    } catch (err) {
+      console.warn('[Lens SW] MobileNet load failed:', err.message);
+      mobileNetModel = null;
+    }
+    return mobileNetModel;
+  })();
+
+  return mobileNetLoading;
+}
+
+// Kick off model loading immediately on SW startup
+getMobileNet();
+
+function preprocessImageData(imageData) {
+  const { width, height, data } = imageData;
+  const SIZE = 224;
+
+  // Resize to 224×224 via bilinear sampling
+  const buf = new Float32Array(SIZE * SIZE * 3);
+  const xScale = width  / SIZE;
+  const yScale = height / SIZE;
+
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const srcX = x * xScale;
+      const srcY = y * yScale;
+      const x0 = Math.floor(srcX), y0 = Math.floor(srcY);
+      const x1 = Math.min(x0 + 1, width  - 1);
+      const y1 = Math.min(y0 + 1, height - 1);
+      const dx = srcX - x0, dy = srcY - y0;
+
+      const idx = (c) => {
+        const i00 = (y0 * width + x0) * 4 + c;
+        const i10 = (y0 * width + x1) * 4 + c;
+        const i01 = (y1 * width + x0) * 4 + c;
+        const i11 = (y1 * width + x1) * 4 + c;
+        return (data[i00] * (1-dx)*(1-dy) + data[i10] * dx*(1-dy) +
+                data[i01] * (1-dx)*dy     + data[i11] * dx*dy) / 255;
+      };
+
+      const base = (y * SIZE + x) * 3;
+      buf[base]     = (idx(0) - IMAGENET_MEAN[0]) / IMAGENET_STD[0];
+      buf[base + 1] = (idx(1) - IMAGENET_MEAN[1]) / IMAGENET_STD[1];
+      buf[base + 2] = (idx(2) - IMAGENET_MEAN[2]) / IMAGENET_STD[2];
+    }
+  }
+  return buf;
+}
+
 // In-memory result cache: URL hash → result
 // Survives across content script navigations within a browser session
 const resultCache = new Map();
@@ -269,6 +351,38 @@ async function analyzeImage(url, domSignals) {
     layer = 4;
   }
 
+  // ── LAYER 5: MobileNetV3 neural classifier ──────────────────────────────
+  // Only run on images large enough to be meaningful (avoids tiny icons)
+  if (imageData.width >= 64 && imageData.height >= 64) {
+    const t5 = Date.now();
+    try {
+      const model = await getMobileNet();
+      if (model) {
+        const prob = tidy(() => {
+          const pixels = preprocessImageData(imageData);
+          const input = tensor4d(pixels, [1, 224, 224, 3]);
+          const output = model.predict(input);
+          return output.dataSync()[0];
+        });
+        timing.l5 = Date.now() - t5;
+
+        if (prob >= 0.50) {
+          // Scale probability to weight: 0.5→0.60, 0.75→0.95 (capped at 0.95)
+          const weight = Math.min(0.95, 0.60 + (prob - 0.50) * 1.4);
+          allSignals.push({
+            type: 'nn',
+            label: `MobileNet classifier: ${(prob * 100).toFixed(1)}% AI`,
+            weight,
+          });
+          maxScore = Math.max(maxScore, weight);
+        }
+        layer = 5;
+      }
+    } catch (err) {
+      console.warn('[Lens SW] MobileNet inference failed:', err.message);
+    }
+  }
+
   return buildResult(url, maxScore, allSignals, layer, timing);
 }
 
@@ -307,7 +421,8 @@ function buildStats(urls) {
 // ---------------------------------------------------------------------------
 
 const LAYER_NAMES = { url: 'L1 URL', exif: 'L2 EXIF', xmp: 'L2 XMP', c2pa: 'L2 C2PA',
-                      iptc: 'L2 IPTC', 'png-meta': 'L2 PNG', dom: 'DOM', pixel: 'L3 Pixel', fft: 'L4 FFT' };
+                      iptc: 'L2 IPTC', 'png-meta': 'L2 PNG', dom: 'DOM', pixel: 'L3 Pixel',
+                      fft: 'L4 FFT', nn: 'L5 NN' };
 
 function logResult(shortUrl, result) {
   const { interpretation, score, signals, layersCompleted, timing, error } = result;

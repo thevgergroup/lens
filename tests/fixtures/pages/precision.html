@@ -5,317 +5,384 @@
   <title>LENS Precision Scorecard</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: monospace; background: #0a0c10; color: #e0e0e0; margin: 0; padding: 16px; }
+    body { font-family: monospace; background: #0a0c10; color: #e0e0e0; margin: 0; padding: 16px; font-size: 12px; }
     h1 { font-size: 15px; color: #90cdf4; margin: 0 0 4px; }
-    #status { font-size: 12px; color: #718096; margin-bottom: 12px; }
+    #status { font-size: 11px; color: #718096; margin-bottom: 12px; }
+    #progress-bar { height: 3px; background: #2d3748; margin-bottom: 12px; border-radius: 2px; }
+    #progress-fill { height: 3px; background: #90cdf4; width: 0; border-radius: 2px; transition: width 0.3s; }
 
-    #scorecard { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    #scorecard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
     .metric-box { background: #1a1d23; border: 1px solid #2d3748; padding: 10px 14px; border-radius: 4px; }
     .metric-box .label { font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; }
     .metric-box .value { font-size: 22px; font-weight: bold; margin-top: 2px; }
-    .metric-box .sub { font-size: 11px; color: #718096; margin-top: 1px; }
-    .good { color: #68d391; }
-    .warn { color: #f6e05e; }
-    .bad  { color: #fc8181; }
+    .metric-box .sub { font-size: 10px; color: #718096; margin-top: 1px; }
+    .good { color: #68d391; } .warn { color: #f6e05e; } .bad { color: #fc8181; } .neutral { color: #a0aec0; }
 
-    #log { font-size: 11px; line-height: 1.6; }
-    .section-head { color: #90cdf4; border-top: 1px solid #2d3748; padding-top: 8px; margin-top: 8px; font-size: 11px; }
-    .row { display: flex; gap: 8px; align-items: baseline; }
-    .row .name { color: #a0aec0; min-width: 220px; }
-    .row .badge { min-width: 90px; }
-    .row .sig { color: #718096; font-size: 10px; }
-    .ok   { color: #68d391; }
-    .miss { color: #fc8181; }
-    .fp   { color: #f6ad55; }
-    .tn   { color: #718096; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    thead th { text-align: left; color: #718096; font-size: 10px; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid #2d3748; }
+    tbody tr:hover { background: #1a1d23; }
+    td { padding: 3px 6px; vertical-align: middle; }
+    td.name { color: #a0aec0; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    td.level { width: 80px; }
+    td.score { width: 50px; color: #718096; }
+    td.signals { color: #4a5568; font-size: 10px; max-width: 400px; }
+    .ok   { color: #68d391; } .miss { color: #fc8181; } .fp { color: #f6ad55; } .tn { color: #4a5568; }
 
-    #grid-section { margin-top: 16px; }
-    #grid-section h2 { font-size: 11px; color: #718096; margin: 12px 0 6px; border-top: 1px solid #2d3748; padding-top: 8px; }
-    .img-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-    .img-cell { position: relative; width: 140px; }
-    .img-cell img { display: block; width: 140px; height: 100px; object-fit: cover; }
-    .img-cell .name-tag { font-size: 9px; color: #718096; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .img-cell .expected { font-size: 9px; color: #4a5568; }
+    h2 { font-size: 11px; color: #718096; margin: 20px 0 4px; border-top: 1px solid #2d3748; padding-top: 10px; }
+    .section-summary { font-size: 11px; color: #a0aec0; margin-bottom: 6px; }
   </style>
 </head>
 <body>
-  <h1>LENS Precision Scorecard</h1>
-  <div id="status">Waiting for extension badges… (reload once extension is active)</div>
+  <h1>LENS Precision Scorecard — direct detector</h1>
+  <div id="status">Initialising…</div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
 
   <div id="scorecard">
     <div class="metric-box">
-      <div class="label">Recall — AI detected</div>
-      <div class="value" id="recall-val">—</div>
-      <div class="sub" id="recall-sub">TP / total AI</div>
+      <div class="label">Recall</div>
+      <div class="value neutral" id="m-recall">—</div>
+      <div class="sub" id="m-recall-sub">AI detected</div>
     </div>
     <div class="metric-box">
       <div class="label">False positive rate</div>
-      <div class="value" id="fpr-val">—</div>
-      <div class="sub" id="fpr-sub">FP / total real</div>
+      <div class="value neutral" id="m-fpr">—</div>
+      <div class="sub" id="m-fpr-sub">real flagged</div>
     </div>
     <div class="metric-box">
       <div class="label">Precision</div>
-      <div class="value" id="prec-val">—</div>
-      <div class="sub" id="prec-sub">TP / (TP + FP)</div>
+      <div class="value neutral" id="m-prec">—</div>
+      <div class="sub" id="m-prec-sub">TP / (TP+FP)</div>
     </div>
     <div class="metric-box">
-      <div class="label">F1 Score</div>
-      <div class="value" id="f1-val">—</div>
-      <div class="sub">harmonic mean prec × recall</div>
+      <div class="label">F1</div>
+      <div class="value neutral" id="m-f1">—</div>
+      <div class="sub">harmonic mean</div>
     </div>
   </div>
 
-  <div id="log"></div>
-
-  <div id="grid-section">
-    <h2>Grok / Aurora via X CDN (48 images — all AI, no metadata, pixel-only)</h2>
-    <div class="img-grid" id="grid-grok"></div>
-
-    <h2>Other AI images (DALL-E, SD, Flux, Aurora samples)</h2>
-    <div class="img-grid" id="grid-other-ai"></div>
-
-    <h2>Real photos via X CDN (18 images — should NOT be flagged)</h2>
-    <div class="img-grid" id="grid-twitter"></div>
-
-    <h2>Real photographs — general (should NOT be flagged)</h2>
-    <div class="img-grid" id="grid-real"></div>
+  <div style="font-size:10px;color:#4a5568;margin:-8px 0 6px;letter-spacing:0.04em;text-transform:uppercase;">Non-CDN only — Other AI + training (36) vs General real + training (84, excl. X/Twitter CDN) — pixel/metadata signals only</div>
+  <div id="scorecard2" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+    <div class="metric-box">
+      <div class="label">Recall (non-CDN)</div>
+      <div class="value neutral" id="m2-recall">—</div>
+      <div class="sub" id="m2-recall-sub">AI detected</div>
+    </div>
+    <div class="metric-box">
+      <div class="label">FPR</div>
+      <div class="value neutral" id="m2-fpr">—</div>
+      <div class="sub" id="m2-fpr-sub">real flagged</div>
+    </div>
+    <div class="metric-box">
+      <div class="label">Precision (non-CDN)</div>
+      <div class="value neutral" id="m2-prec">—</div>
+      <div class="sub" id="m2-prec-sub">TP / (TP+FP)</div>
+    </div>
+    <div class="metric-box">
+      <div class="label">F1 (non-CDN)</div>
+      <div class="value neutral" id="m2-f1">—</div>
+      <div class="sub">harmonic mean</div>
+    </div>
   </div>
 
-  <script>
-    // Image lists — paths relative to this page (pages/ → images/)
+  <div id="results"></div>
+
+  <canvas id="canvas" style="display:none"></canvas>
+
+  <script type="module">
+    import {
+      checkUrlHeuristics,
+      parseMetadata,
+      analyzePixelStatistics,
+      analyzeFrequencyDomain,
+      interpretScore,
+    } from '/lib/detector.js';
+
+    const FLAGGED = new Set(['definite', 'likely', 'possible']);
+
+    const BASE = '/tests/fixtures/images';
     const AI_GROK = Array.from({length: 48}, (_, i) =>
-      `../images/ai/grok/grok-${String(i+1).padStart(3,'0')}.jpg`
+      `${BASE}/ai/grok/grok-${String(i+1).padStart(3,'0')}.jpg`
     );
-
     const AI_OTHER = [
-      '../images/ai/aurora-astronaut.webp',
-      '../images/ai/aurora-cherry-blossom.webp',
-      '../images/ai/aurora-cyberpunk-city.webp',
-      '../images/ai/aurora-mountain.webp',
-      '../images/ai/aurora-tea-dog.webp',
-      '../images/ai/aurora-vangogh-cat.webp',
-      '../images/ai/bing-creator-puppy.jpg',
-      '../images/ai/chatgpt-image.png',
-      '../images/ai/dalle-blue-man.png',
-      '../images/ai/dalle-puppy.webp',
-      '../images/ai/dalle-robot-letter.png',
-      '../images/ai/eyes.jpg',
-      '../images/ai/firefly-tabby-cat.jpg',
-      '../images/ai/flux-grid.jpg',
-      '../images/ai/flux-schnell-grid.jpg',
-      '../images/ai/sd-android.png',
-      '../images/ai/sd-golem.jpg',
-      '../images/ai/sd-img2img-mountains.png',
-      '../images/ai/sd-txt2img-01.png',
-      '../images/ai/sdxl-sample-01.jpg',
-      '../images/ai/sdxl-test.png',
+      `${BASE}/ai/aurora-astronaut.webp`,
+      `${BASE}/ai/aurora-cherry-blossom.webp`,
+      `${BASE}/ai/aurora-cyberpunk-city.webp`,
+      `${BASE}/ai/aurora-mountain.webp`,
+      `${BASE}/ai/aurora-tea-dog.webp`,
+      `${BASE}/ai/aurora-vangogh-cat.webp`,
+      `${BASE}/ai/bing-creator-puppy.jpg`,
+      `${BASE}/ai/chatgpt-image.png`,
+      `${BASE}/ai/dalle-blue-man.png`,
+      `${BASE}/ai/dalle-puppy.webp`,
+      `${BASE}/ai/dalle-robot-letter.png`,
+      `${BASE}/ai/eyes.jpg`,
+      `${BASE}/ai/firefly-tabby-cat.jpg`,
+      `${BASE}/ai/flux-grid.jpg`,
+      `${BASE}/ai/flux-schnell-grid.jpg`,
+      `${BASE}/ai/sd-android.png`,
+      `${BASE}/ai/sd-golem.jpg`,
+      `${BASE}/ai/sd-img2img-mountains.png`,
+      `${BASE}/ai/sd-txt2img-01.png`,
+      `${BASE}/ai/sdxl-sample-01.jpg`,
+      `${BASE}/ai/sdxl-test.png`,
     ];
-
-    const REAL_TWITTER = [
-      '../images/real/twitter/twitter-real-001.jpg',
-      '../images/real/twitter/twitter-real-002.jpg',
-      '../images/real/twitter/twitter-real-003.jpg',
-      '../images/real/twitter/twitter-real-004.jpg',
-      '../images/real/twitter/twitter-real-005.jpg',
-      '../images/real/twitter/twitter-real-006.jpg',
-      '../images/real/twitter/twitter-real-007.jpg',
-      '../images/real/twitter/twitter-real-008.jpg',
-      '../images/real/twitter/twitter-real-009.jpg',
-      '../images/real/twitter/twitter-real-010.jpg',
-      '../images/real/twitter/twitter-real-011.jpg',
-      '../images/real/twitter/twitter-real-012.jpg',
-      '../images/real/twitter/twitter-real-013.jpg',
-      '../images/real/twitter/twitter-real-014.jpg',
-      '../images/real/twitter/twitter-real-015.jpg',
-      '../images/real/twitter/twitter-real-016.jpg',
-      '../images/real/twitter/twitter-real-017.jpg',
-      '../images/real/twitter/twitter-real-018.png',
-    ];
-
+    const REAL_TWITTER = Array.from({length: 17}, (_, i) =>
+      `${BASE}/real/twitter/twitter-real-${String(i+1).padStart(3,'0')}.jpg`
+    ).concat([`${BASE}/real/twitter/twitter-real-018.png`]);
     const REAL_OTHER = [
-      '../images/real/ant-photo.jpg',
-      '../images/real/car-photo.jpg',
-      '../images/real/cat-photo.jpg',
-      '../images/real/city-nyc.jpg',
-      '../images/real/cloudscape.jpg',
-      '../images/real/crater-lake.jpg',
-      '../images/real/crater-lake-nocreds.jpg',
-      '../images/real/dice-photo.png',
-      '../images/real/dog-photo.jpg',
-      '../images/real/flower-macro.jpg',
-      '../images/real/golden-gate-bridge.jpg',
-      '../images/real/lena.png',
-      '../images/real/mountain-landscape.jpg',
-      '../images/real/nasa-astronaut-portrait.jpg',
-      '../images/real/nasa-earth.jpg',
-      '../images/real/nasa-madagascar-coast.jpg',
-      '../images/real/nasa-mars.jpg',
-      '../images/real/nasa-wildlife.jpg',
-      '../images/real/ocean-waves.jpg',
-      '../images/real/picsum-landscape-10.jpg',
-      '../images/real/picsum-landscape-110.jpg',
-      '../images/real/picsum-landscape-65.jpg',
-      '../images/real/picsum-portrait-91.jpg',
-      '../images/real/picsum-scene-200.jpg',
-      '../images/real/waterfall.jpg',
+      `${BASE}/real/ant-photo.jpg`,
+      `${BASE}/real/car-photo.jpg`,
+      `${BASE}/real/cat-photo.jpg`,
+      `${BASE}/real/city-nyc.jpg`,
+      `${BASE}/real/cloudscape.jpg`,
+      `${BASE}/real/crater-lake.jpg`,
+      `${BASE}/real/crater-lake-nocreds.jpg`,
+      `${BASE}/real/dice-photo.png`,
+      `${BASE}/real/dog-photo.jpg`,
+      `${BASE}/real/flower-macro.jpg`,
+      `${BASE}/real/golden-gate-bridge.jpg`,
+      `${BASE}/real/lena.png`,
+      `${BASE}/real/mountain-landscape.jpg`,
+      `${BASE}/real/nasa-astronaut-portrait.jpg`,
+      `${BASE}/real/nasa-earth.jpg`,
+      `${BASE}/real/nasa-madagascar-coast.jpg`,
+      `${BASE}/real/nasa-mars.jpg`,
+      `${BASE}/real/nasa-wildlife.jpg`,
+      `${BASE}/real/ocean-waves.jpg`,
+      `${BASE}/real/picsum-landscape-10.jpg`,
+      `${BASE}/real/picsum-landscape-110.jpg`,
+      `${BASE}/real/picsum-landscape-65.jpg`,
+      `${BASE}/real/picsum-portrait-91.jpg`,
+      `${BASE}/real/picsum-scene-200.jpg`,
+      `${BASE}/real/waterfall.jpg`,
     ];
 
-    // Render image grids
-    function renderGrid(containerId, paths) {
-      const el = document.getElementById(containerId);
-      for (const src of paths) {
-        const name = src.split('/').pop();
-        const cell = document.createElement('div');
-        cell.className = 'img-cell';
-        cell.dataset.src = src;
-        cell.innerHTML = `<img src="${src}" alt="${name}" loading="lazy"><div class="name-tag">${name}</div><div class="expected"></div>`;
-        el.appendChild(cell);
-      }
-    }
-    renderGrid('grid-grok', AI_GROK);
-    renderGrid('grid-other-ai', AI_OTHER);
-    renderGrid('grid-twitter', REAL_TWITTER);
-    renderGrid('grid-real', REAL_OTHER);
+    const T = `${BASE}/ai/training`;
+    const AI_TRAINING = [
+      `${T}/flux-dev-grid.jpg`,
+      `${T}/flux-robot.webp`,
+      `${T}/flux-schnell-grid.jpg`,
+      `${T}/mj-astronaut-mars.png`,
+      `${T}/mj-greenwood-city.jpg`,
+      `${T}/sd1-img2img-mountains.png`,
+      `${T}/sd1-txt2img-000.png`,
+      `${T}/sd1-txt2img-001.png`,
+      `${T}/sd1-txt2img-002.png`,
+      `${T}/sdxl-000.jpg`,
+      `${T}/sdxl-test-image.png`,
+      `${T}/sdxl-turbo-tile.png`,
+      `${T}/wiki-dalle-robot-letter.png`,
+      `${T}/wiki-ideogram-universe.webp`,
+      `${T}/wiki-sd-cyberpunk-city.webp`,
+    ];
 
-    // Poll badge results after a delay so extension has time to process
-    const AI_SRCS   = new Set([...AI_GROK, ...AI_OTHER]);
-    const REAL_SRCS = new Set([...REAL_TWITTER, ...REAL_OTHER]);
-    const TOTAL = AI_GROK.length + AI_OTHER.length + REAL_TWITTER.length + REAL_OTHER.length;
+    const R = `${BASE}/real/training`;
+    const REAL_TRAINING = [
+      `${R}/picsum-014.jpg`,`${R}/picsum-015.jpg`,`${R}/picsum-016.jpg`,`${R}/picsum-017.jpg`,
+      `${R}/picsum-018.jpg`,`${R}/picsum-019.jpg`,`${R}/picsum-020.jpg`,`${R}/picsum-021.jpg`,
+      `${R}/picsum-022.jpg`,`${R}/picsum-023.jpg`,`${R}/picsum-030.jpg`,`${R}/picsum-031.jpg`,
+      `${R}/picsum-032.jpg`,`${R}/picsum-033.jpg`,`${R}/picsum-034.jpg`,`${R}/picsum-037.jpg`,
+      `${R}/picsum-039.jpg`,`${R}/picsum-040.jpg`,`${R}/picsum-042.jpg`,`${R}/picsum-043.jpg`,
+      `${R}/picsum-050.jpg`,`${R}/picsum-051.jpg`,`${R}/picsum-052.jpg`,`${R}/picsum-053.jpg`,
+      `${R}/picsum-054.jpg`,`${R}/picsum-055.jpg`,`${R}/picsum-056.jpg`,`${R}/picsum-057.jpg`,
+      `${R}/picsum-058.jpg`,`${R}/picsum-059.jpg`,`${R}/picsum-060.jpg`,`${R}/picsum-061.jpg`,
+      `${R}/picsum-062.jpg`,`${R}/picsum-063.jpg`,`${R}/picsum-064.jpg`,`${R}/picsum-066.jpg`,
+      `${R}/picsum-067.jpg`,`${R}/picsum-068.jpg`,`${R}/picsum-069.jpg`,`${R}/picsum-070.jpg`,
+      `${R}/picsum-071.jpg`,`${R}/picsum-072.jpg`,`${R}/picsum-073.jpg`,`${R}/picsum-074.jpg`,
+      `${R}/picsum-075.jpg`,`${R}/picsum-076.jpg`,`${R}/picsum-077.jpg`,`${R}/picsum-078.jpg`,
+      `${R}/picsum-079.jpg`,`${R}/picsum-080.jpg`,
+      `${R}/wiki-ant.jpg`,`${R}/wiki-beaver.jpg`,`${R}/wiki-cat.jpg`,`${R}/wiki-cat3.jpg`,
+      `${R}/wiki-chocolate.jpg`,`${R}/wiki-lion.jpg`,`${R}/wiki-stonehenge.jpg`,
+      `${R}/wiki-sunflower2.jpg`,`${R}/wiki-waterfall.jpg`,
+    ];
 
-    // Map src → { flagged, level, signals }
-    const results = new Map();
+    const ALL = [
+      { list: AI_GROK,      isAI: true,  cdnOnly: true,  label: 'Grok / Aurora via X CDN' },
+      { list: AI_OTHER,     isAI: true,  cdnOnly: false, label: 'Other AI (DALL-E, SD, Flux, Aurora samples)' },
+      { list: AI_TRAINING,  isAI: true,  cdnOnly: false, label: 'AI training set (SD, SDXL, Flux, MJ, Ideogram)' },
+      { list: REAL_TWITTER, isAI: false, cdnOnly: true,  label: 'Real photos via X CDN' },
+      { list: REAL_OTHER,   isAI: false, cdnOnly: false, label: 'Real photographs — general' },
+      { list: REAL_TRAINING,isAI: false, cdnOnly: false, label: 'Real training set (Picsum + Wikimedia)' },
+    ];
 
-    // Badge confidence classes → level string (matches content.css)
-    const CLASS_MAP = {
-      'lens-definite': 'definite',
-      'lens-likely':   'likely',
-      'lens-possible': 'possible',
-      'lens-unlikely': 'unlikely',
-      'lens-clean':    'clean',
-    };
-    const FLAGGED_LEVELS = new Set(['definite', 'likely', 'possible']);
+    const TOTAL = ALL.reduce((s, g) => s + g.list.length, 0);
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-    function readBadges() {
-      let processed = 0;
-      document.querySelectorAll('.lens-wrapper, .lens-badge').forEach(el => {
-        // Find the img associated with this badge
-        const wrapper = el.closest('.lens-wrapper') || el.parentElement;
-        if (!wrapper) return;
-        const img = wrapper.querySelector('img') || (wrapper.tagName === 'IMG' ? wrapper : null);
-        if (!img) return;
-        const src = img.getAttribute('src');
-        if (!src) return;
-
-        // Find badge element
-        const badge = wrapper.querySelector('.lens-badge') || (el.classList.contains('lens-badge') ? el : null);
-        if (!badge) return;
-
-        let level = 'unknown';
-        for (const [cls, lvl] of Object.entries(CLASS_MAP)) {
-          if (badge.classList.contains(cls)) { level = lvl; break; }
-        }
-        const flagged = FLAGGED_LEVELS.has(level);
-
-        // Get tooltip signals if present
-        const tooltip = badge.querySelector('.lens-tooltip');
-        const signals = tooltip ? tooltip.textContent.trim() : '';
-
-        // Normalise src to relative path matching our lists
-        const relSrc = src.replace(/^.*\/pages\//, '../').replace(/^.*\/images\//, '../images/');
-
-        results.set(relSrc, { flagged, level, signals });
-        processed++;
+    // Decode image → ImageData via canvas
+    async function decodeImage(src) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((res, rej) => {
+        img.onload = res;
+        img.onerror = rej;
+        img.src = src;
       });
-      return processed;
+      const W = Math.min(img.naturalWidth,  512);
+      const H = Math.min(img.naturalHeight, 512);
+      canvas.width = W; canvas.height = H;
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(img, 0, 0, W, H);
+      return ctx.getImageData(0, 0, W, H);
     }
+
+    async function analyzeOne(src) {
+      const isLossy = /\.(jpe?g|webp)$/i.test(src);
+      const absUrl = new URL(src, location.href).href;
+
+      // L1
+      const l1 = checkUrlHeuristics(absUrl);
+
+      // L2
+      let l2 = { score: 0, signals: [] };
+      try {
+        const buf = await fetch(src).then(r => r.arrayBuffer());
+        l2 = await parseMetadata(buf);
+      } catch {}
+
+      // L3 + L4
+      let l3 = { score: 0, signals: [] };
+      let l4 = { score: 0, signals: [] };
+      try {
+        const imageData = await decodeImage(src);
+        l3 = analyzePixelStatistics(imageData, isLossy);
+        l4 = analyzeFrequencyDomain(imageData);
+      } catch {}
+
+      const allSignals = [...l1.signals, ...l2.signals, ...l3.signals, ...l4.signals];
+      const score = Math.max(l1.score, l2.score, l3.score, l4.score);
+      const interp = interpretScore(score, allSignals);
+      return { score, level: interp.level, label: interp.label, signals: allSignals };
+    }
+
+    // Scoring state — all images
+    let tp = 0, fp = 0, fn = 0, tn = 0, done = 0;
+    // Scoring state — Grok images excluded from both AI and real sides
+    let tp2 = 0, fp2 = 0, fn2 = 0, tn2 = 0;
+
+    function pct(v) { return (v * 100).toFixed(0) + '%'; }
+    function cls(v) { return v >= 0.8 ? 'good' : v >= 0.55 ? 'warn' : 'bad'; }
+    function fpcls(v) { return v <= 0.15 ? 'good' : v <= 0.35 ? 'warn' : 'bad'; }
 
     function updateScorecard() {
-      const aiList   = [...AI_SRCS];
-      const realList = [...REAL_SRCS];
+      const recall = (tp + fn) > 0 ? tp / (tp + fn) : 0;
+      const fpr    = (fp + tn) > 0 ? fp / (fp + tn) : 0;
+      const prec   = (tp + fp) > 0 ? tp / (tp + fp) : 1;
+      const f1     = (prec + recall) > 0 ? 2 * prec * recall / (prec + recall) : 0;
 
-      const tp = aiList.filter(s => results.get(s)?.flagged).length;
-      const fp = realList.filter(s => results.get(s)?.flagged).length;
-      const fn = aiList.filter(s => results.has(s) && !results.get(s).flagged).length;
-      const tn = realList.filter(s => results.has(s) && !results.get(s).flagged).length;
-      const aiProcessed = aiList.filter(s => results.has(s)).length;
-      const realProcessed = realList.filter(s => results.has(s)).length;
+      const recall2 = (tp2 + fn2) > 0 ? tp2 / (tp2 + fn2) : 0;
+      const fpr2    = (fp2 + tn2) > 0 ? fp2 / (fp2 + tn2) : 0;
+      const prec2   = (tp2 + fp2) > 0 ? tp2 / (tp2 + fp2) : 1;
+      const f12     = (prec2 + recall2) > 0 ? 2 * prec2 * recall2 / (prec2 + recall2) : 0;
 
-      if (aiProcessed + realProcessed === 0) return;
-
-      const recall    = aiProcessed > 0 ? tp / aiProcessed : 0;
-      const fpr       = realProcessed > 0 ? fp / realProcessed : 0;
-      const precision = tp + fp > 0 ? tp / (tp + fp) : 1;
-      const f1        = precision + recall > 0 ? 2 * precision * recall / (precision + recall) : 0;
-
-      const pct = v => (v * 100).toFixed(0) + '%';
-      const cls = v => v >= 0.8 ? 'good' : v >= 0.6 ? 'warn' : 'bad';
-      const fpcls = v => v <= 0.15 ? 'good' : v <= 0.35 ? 'warn' : 'bad';
-
-      document.getElementById('recall-val').textContent = pct(recall);
-      document.getElementById('recall-val').className = `value ${cls(recall)}`;
-      document.getElementById('recall-sub').textContent = `${tp} / ${aiProcessed} AI images`;
-
-      document.getElementById('fpr-val').textContent = pct(fpr);
-      document.getElementById('fpr-val').className = `value ${fpcls(fpr)}`;
-      document.getElementById('fpr-sub').textContent = `${fp} / ${realProcessed} real photos`;
-
-      document.getElementById('prec-val').textContent = pct(precision);
-      document.getElementById('prec-val').className = `value ${cls(precision)}`;
-      document.getElementById('prec-sub').textContent = `${tp} TP, ${fp} FP`;
-
-      document.getElementById('f1-val').textContent = pct(f1);
-      document.getElementById('f1-val').className = `value ${cls(f1)}`;
-
-      // Per-image log
-      const log = document.getElementById('log');
-      log.innerHTML = '';
-
-      function section(title, list, isAI) {
-        const h = document.createElement('div');
-        h.className = 'section-head';
-        h.textContent = title;
-        log.appendChild(h);
-        for (const src of list) {
-          const r = results.get(src);
-          const name = src.split('/').pop();
-          const row = document.createElement('div');
-          row.className = 'row';
-          if (!r) {
-            row.innerHTML = `<span class="name">${name}</span><span class="badge" style="color:#4a5568">pending…</span>`;
-          } else if (isAI) {
-            const cls = r.flagged ? 'ok' : 'miss';
-            const tag = r.flagged ? '✓' : '✗';
-            row.innerHTML = `<span class="name ${cls}">${tag} ${name}</span><span class="badge">${r.level}</span><span class="sig">${r.signals}</span>`;
-          } else {
-            const cls = r.flagged ? 'fp' : 'tn';
-            const tag = r.flagged ? 'FP' : '✓';
-            row.innerHTML = `<span class="name ${cls}">${tag} ${name}</span><span class="badge">${r.level}</span><span class="sig">${r.signals}</span>`;
-          }
-          log.appendChild(row);
-        }
-      }
-
-      section(`Grok CDN (${AI_GROK.filter(s=>results.has(s)&&results.get(s).flagged).length}/${aiProcessed < AI_GROK.length ? aiProcessed : AI_GROK.length} detected)`, AI_GROK, true);
-      section(`Other AI (${AI_OTHER.filter(s=>results.has(s)&&results.get(s).flagged).length}/${Math.min(aiProcessed - AI_GROK.filter(s=>results.has(s)).length, AI_OTHER.length)} detected)`, AI_OTHER, true);
-      section(`Twitter real photos (${fp} / ${realProcessed < REAL_TWITTER.length ? realProcessed : REAL_TWITTER.length} false positives)`, REAL_TWITTER, false);
-      section(`General real photos`, REAL_OTHER, false);
-
-      const done = aiProcessed + realProcessed;
+      const set = (id, val, c, sub) => {
+        document.getElementById(id).textContent = val;
+        document.getElementById(id).className = `value ${c}`;
+        if (sub) document.getElementById(id + '-sub').textContent = sub;
+      };
+      set('m-recall', pct(recall), cls(recall),   `${tp} / ${tp+fn} AI`);
+      set('m-fpr',    pct(fpr),    fpcls(fpr),    `${fp} / ${fp+tn} real`);
+      set('m-prec',   pct(prec),   cls(prec),     `${tp} TP, ${fp} FP`);
+      set('m-f1',     pct(f1),     cls(f1),       null);
+      set('m2-recall', pct(recall2), cls(recall2), `${tp2} / ${tp2+fn2} non-Grok AI`);
+      set('m2-fpr',    pct(fpr2),    fpcls(fpr2),  `${fp2} / ${fp2+tn2} real`);
+      set('m2-prec',   pct(prec2),   cls(prec2),   `${tp2} TP, ${fp2} FP`);
+      set('m2-f1',     pct(f12),     cls(f12),     null);
+      document.getElementById('progress-fill').style.width = `${(done/TOTAL)*100}%`;
       document.getElementById('status').textContent =
-        `${done} / ${TOTAL} images processed — last update ${new Date().toLocaleTimeString()}`;
+        `${done} / ${TOTAL} processed`;
     }
 
-    // Poll every 1.5s for up to 3 minutes
-    let polls = 0;
-    const interval = setInterval(() => {
-      readBadges();
-      updateScorecard();
-      polls++;
-      if (polls > 120) clearInterval(interval);
-    }, 1500);
+    // Render a section with a table that fills in as results arrive
+    function makeSection(group) {
+      const div = document.createElement('div');
+      const h2  = document.createElement('h2');
+      h2.textContent = group.label;
+      div.appendChild(h2);
 
-    // Initial read after 2s
-    setTimeout(() => { readBadges(); updateScorecard(); }, 2000);
+      const summary = document.createElement('div');
+      summary.className = 'section-summary';
+      summary.textContent = 'Running…';
+      div.appendChild(summary);
+
+      const table = document.createElement('table');
+      table.innerHTML = `<thead><tr>
+        <th>Image</th><th>Level</th><th>Score</th><th>Signals</th>
+      </tr></thead>`;
+      const tbody = document.createElement('tbody');
+      table.appendChild(tbody);
+      div.appendChild(table);
+      document.getElementById('results').appendChild(div);
+
+      let secTP = 0, secFP = 0, secTotal = 0;
+
+      return {
+        addRow(src, result) {
+          const name = src.split('/').pop();
+          const flagged = FLAGGED.has(result.level);
+          secTotal++;
+          if (group.isAI && flagged)  secTP++;
+          if (!group.isAI && flagged) secFP++;
+
+          const correct = group.isAI ? flagged : !flagged;
+          const rowCls  = group.isAI
+            ? (flagged ? 'ok' : 'miss')
+            : (flagged ? 'fp' : 'tn');
+          const tag = group.isAI
+            ? (flagged ? '✓' : '✗')
+            : (flagged ? 'FP' : '✓');
+
+          const sigLabels = result.signals.map(s => s.label).join(' | ');
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="name ${rowCls}">${tag} ${name}</td>
+            <td class="level">${result.level}</td>
+            <td class="score">${result.score.toFixed(2)}</td>
+            <td class="signals">${sigLabels}</td>`;
+          tbody.appendChild(tr);
+
+          if (!group.isAI && flagged) {
+            console.warn(`FP [${group.label}] ${name} score=${result.score.toFixed(2)} level=${result.level}`);
+            for (const s of result.signals) {
+              console.warn(`  signal: [${s.type}] weight=${s.weight} — ${s.label}`);
+            }
+          }
+
+          if (group.isAI) {
+            summary.textContent = `${secTP} / ${secTotal} detected`;
+          } else {
+            summary.textContent = `${secFP} / ${secTotal} false positives`;
+          }
+        }
+      };
+    }
+
+    // Run all groups sequentially (each image one at a time to avoid canvas races)
+    for (const group of ALL) {
+      const section = makeSection(group);
+      for (const src of group.list) {
+        document.getElementById('status').textContent = `Analysing ${src.split('/').pop()}… (${done+1}/${TOTAL})`;
+        let result;
+        try {
+          result = await analyzeOne(src);
+        } catch(e) {
+          result = { score: 0, level: 'error', label: 'Error', signals: [{ label: e.message }] };
+        }
+        const flagged = FLAGGED.has(result.level);
+        if (group.isAI) {
+          flagged ? tp++ : fn++;
+          if (!group.cdnOnly) { flagged ? tp2++ : fn2++; }
+        } else {
+          flagged ? fp++ : tn++;
+          if (!group.cdnOnly) { flagged ? fp2++ : tn2++; }
+        }
+        done++;
+        section.addRow(src, result);
+        updateScorecard();
+      }
+    }
+
+    document.getElementById('status').textContent = `Complete — ${TOTAL} images analysed`;
   </script>
 </body>
 </html>
