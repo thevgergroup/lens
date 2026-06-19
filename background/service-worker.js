@@ -366,9 +366,9 @@ async function analyzeImage(url, domSignals) {
         });
         timing.l5 = Date.now() - t5;
 
-        if (prob >= 0.50) {
-          // Scale probability to weight: 0.5→0.60, 0.75→0.95 (capped at 0.95)
-          const weight = Math.min(0.95, 0.60 + (prob - 0.50) * 1.4);
+        if (prob >= 0.65) {
+          // Scale probability to weight: 0.65→0.60, 0.87→0.95 (capped at 0.95)
+          const weight = Math.min(0.95, 0.60 + (prob - 0.65) * 1.57);
           allSignals.push({
             type: 'nn',
             label: `MobileNet classifier: ${(prob * 100).toFixed(1)}% AI`,
