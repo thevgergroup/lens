@@ -26,23 +26,34 @@ import {
 // MobileNetV3 model — loaded once, reused for all analyses
 // ---------------------------------------------------------------------------
 
+// ── Model loading ─────────────────────────────────────────────────────────────
+
 const IMAGENET_MEAN = [0.485, 0.456, 0.406];
 const IMAGENET_STD  = [0.229, 0.224, 0.225];
 
 let mobileNetModel = null;
 let mobileNetLoading = null;
+let forensicModel = null;
+let forensicLoading = null;
+let tfBackendReady = null;
+
+async function ensureTFBackend() {
+  if (tfBackendReady) return tfBackendReady;
+  tfBackendReady = (async () => {
+    const wasmBase = chrome.runtime.getURL('lib/tfjs/');
+    setWasmPaths(wasmBase);
+    await setBackend('wasm');
+    await ready();
+  })();
+  return tfBackendReady;
+}
 
 async function getMobileNet() {
   if (mobileNetModel) return mobileNetModel;
   if (mobileNetLoading) return mobileNetLoading;
-
   mobileNetLoading = (async () => {
     try {
-      const wasmBase = chrome.runtime.getURL('lib/tfjs/');
-      setWasmPaths(wasmBase);
-      await setBackend('wasm');
-      await ready();
-
+      await ensureTFBackend();
       const modelUrl = chrome.runtime.getURL('lib/mobilenet-tfjs/model.json');
       mobileNetModel = await loadGraphModel(modelUrl);
       console.log('[Lens SW] MobileNet model loaded');
@@ -52,18 +63,78 @@ async function getMobileNet() {
     }
     return mobileNetModel;
   })();
-
   return mobileNetLoading;
 }
 
-// Kick off model loading immediately on SW startup
+async function getForensicModel() {
+  if (forensicModel) return forensicModel;
+  if (forensicLoading) return forensicLoading;
+  forensicLoading = (async () => {
+    try {
+      await ensureTFBackend();
+      const modelUrl = chrome.runtime.getURL('lib/forensic-tfjs/model.json');
+      forensicModel = await loadGraphModel(modelUrl);
+      console.log('[Lens SW] Forensic model loaded');
+    } catch (err) {
+      console.warn('[Lens SW] Forensic model not available:', err.message);
+      forensicModel = null;
+    }
+    return forensicModel;
+  })();
+  return forensicLoading;
+}
+
+// Kick off model loading on SW startup
 getMobileNet();
+getForensicModel();
+
+// ── Preprocessing ─────────────────────────────────────────────────────────────
+
+// NPR (Neighboring Pixel Residual) transform.
+// Downsample 2x nearest-neighbor then upsample 2x, subtract from original.
+// Isolates upsampling artifacts common to all generative models (GANs, diffusion).
+// Content is suppressed; forensic artifacts are amplified.
+// Mirrors the Python apply_npr() in train-forensic-encoder.py exactly.
+function applyNPR(rgba, width, height, outSize) {
+  const buf = new Float32Array(outSize * outSize * 3);
+  const xScale = width  / outSize;
+  const yScale = height / outSize;
+
+  for (let y = 0; y < outSize; y++) {
+    for (let x = 0; x < outSize; x++) {
+      // Bilinear sample from source
+      const srcX = x * xScale, srcY = y * yScale;
+      const x0 = Math.floor(srcX), y0 = Math.floor(srcY);
+      const x1 = Math.min(x0 + 1, width - 1);
+      const y1 = Math.min(y0 + 1, height - 1);
+      const dx = srcX - x0, dy = srcY - y0;
+
+      // Nearest-neighbor 2x downsample+upsample: snap to even pixel
+      const nx = (x0 & ~1), ny = (y0 & ~1);
+      const nx1 = Math.min(nx, width - 1), ny1 = Math.min(ny, height - 1);
+
+      const base = (y * outSize + x) * 3;
+      for (let c = 0; c < 3; c++) {
+        const i00 = (y0 * width + x0) * 4 + c;
+        const i10 = (y0 * width + x1) * 4 + c;
+        const i01 = (y1 * width + x0) * 4 + c;
+        const i11 = (y1 * width + x1) * 4 + c;
+        const pixel = (rgba[i00]*(1-dx)*(1-dy) + rgba[i10]*dx*(1-dy) +
+                       rgba[i01]*(1-dx)*dy      + rgba[i11]*dx*dy) / 255;
+
+        const ni = (ny1 * width + nx1) * 4 + c;
+        const recon = rgba[ni] / 255;
+
+        buf[base + c] = (pixel - recon) * (2 / 3);
+      }
+    }
+  }
+  return buf;
+}
 
 function preprocessImageData(imageData) {
   const { width, height, data } = imageData;
   const SIZE = 224;
-
-  // Resize to 224×224 via bilinear sampling
   const buf = new Float32Array(SIZE * SIZE * 3);
   const xScale = width  / SIZE;
   const yScale = height / SIZE;
@@ -394,6 +465,38 @@ async function analyzeImage(url, domSignals) {
       }
     } catch (err) {
       console.warn('[Lens SW] MobileNet inference failed:', err.message);
+    }
+  }
+
+  // ── LAYER 6: Forensic NPR encoder ───────────────────────────────────────
+  // Examines HOW the image was made (upsampling artifacts, frequency anomalies)
+  // rather than WHAT is in it. Generalizes to unseen generators.
+  if (imageData.width >= 64 && imageData.height >= 64) {
+    const t6 = Date.now();
+    try {
+      const model = await getForensicModel();
+      if (model) {
+        const prob = tidy(() => {
+          const pixels = applyNPR(imageData.data, imageData.width, imageData.height, 224);
+          const input = tensor4d(pixels, [1, 224, 224, 3]);
+          const output = model.predict(input);
+          return output.dataSync()[0];
+        });
+        timing.l6 = Date.now() - t6;
+
+        if (prob >= 0.50) {
+          const weight = Math.min(0.95, prob - 0.05);
+          allSignals.push({
+            type: 'forensic',
+            label: `Forensic encoder: ${(prob * 100).toFixed(1)}% AI`,
+            weight,
+          });
+          maxScore = Math.max(maxScore, weight);
+        }
+        layer = 6;
+      }
+    } catch (err) {
+      console.warn('[Lens SW] Forensic model inference failed:', err.message);
     }
   }
 
