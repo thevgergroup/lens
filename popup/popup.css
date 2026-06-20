@@ -13,14 +13,14 @@
 }
 
 :root {
-  --bg:           #0A0C10;
-  --bg-2:         #0F1117;
-  --bg-3:         #161B22;
-  --border:       rgba(255,255,255,0.07);
-  --border-hover: rgba(255,255,255,0.14);
-  --text:         #E2E8F0;
-  --text-dim:     #718096;
-  --text-muted:   #4A5568;
+  --bg:           #1A1F2E;
+  --bg-2:         #222736;
+  --bg-3:         #2A3045;
+  --border:       rgba(255,255,255,0.12);
+  --border-hover: rgba(255,255,255,0.24);
+  --text:         #F0F4F8;
+  --text-dim:     #B0BCCC;
+  --text-muted:   #7A8BA0;
   --accent:       #63B3ED;
 
   --c-definite:   #FC8181;
@@ -182,7 +182,7 @@ body {
   font-size: 16px;
   font-weight: 700;
   line-height: 1;
-  color: var(--text-dim);
+  color: var(--text);
   transition: color 0.2s;
 }
 
@@ -196,7 +196,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-dim);
 }
 
 /* ── Filter tabs ────────────────────────────────────────────────────────── */
@@ -314,7 +314,7 @@ body {
 .result-item__url {
   font-family: var(--mono);
   font-size: 9px;
-  color: var(--text-muted);
+  color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -396,7 +396,7 @@ body {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;
-  color: var(--text-dim);
+  color: var(--text);
   margin-bottom: 5px;
   text-transform: uppercase;
 }
@@ -471,7 +471,7 @@ body {
 
 .setting__note {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--text-dim);
   line-height: 1.5;
 }
 
@@ -522,6 +522,24 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 220px;
+}
+
+.footer__clear {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.footer__clear:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.06);
 }
 
 .footer__badge {

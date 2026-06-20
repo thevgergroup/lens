@@ -134,6 +134,7 @@ self.addEventListener('message', async (event) => {
 
     case 'CLEAR_CACHE':
       resultCache.clear();
+      chrome.storage.session?.clear().catch(() => {});
       event.source.postMessage({ type: 'CACHE_CLEARED', id });
       break;
   }
@@ -149,6 +150,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const shortUrl = url.split('/').pop().slice(0, 40);
     console.log(`[Lens SW] ANALYZE_IMAGE received: ${shortUrl}`);
 
+    const tabId = sender?.tab?.id;
+
     // Check cache for immediate inline response
     if (resultCache.has(url)) {
       console.log(`[Lens SW] Cache hit: ${shortUrl}`);
@@ -161,8 +164,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Use event.waitUntil pattern via a port keepalive to prevent SW termination
     // during async fetch+decode (MV3 SW can be suspended mid-flight otherwise)
     const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000);
-
-    const tabId = sender?.tab?.id;
 
     analyzeImage(url, domSignals || {})
       .then(result => {
@@ -206,6 +207,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'GET_CACHE_SIZE') {
     sendResponse({ size: resultCache.size });
+    return false;
+  }
+
+  if (message.type === 'CLEAR_CACHE') {
+    resultCache.clear();
+    chrome.storage.session?.clear().catch(() => {});
+    // Tell all tabs to re-analyze from scratch
+    chrome.tabs.query({}, tabs => {
+      for (const tab of tabs) {
+        chrome.tabs.sendMessage(tab.id, { type: 'REANALYZE' }).catch(() => {});
+      }
+    });
+    sendResponse({ ok: true });
     return false;
   }
 });
@@ -366,9 +380,9 @@ async function analyzeImage(url, domSignals) {
         });
         timing.l5 = Date.now() - t5;
 
-        if (prob >= 0.65) {
-          // Scale probability to weight: 0.65→0.60, 0.87→0.95 (capped at 0.95)
-          const weight = Math.min(0.95, 0.60 + (prob - 0.65) * 1.57);
+        if (prob >= 0.70) {
+          // Scale probability to weight: 0.70→0.60, 1.00→0.95 (capped at 0.95)
+          const weight = Math.min(0.95, 0.60 + (prob - 0.70) * 1.167);
           allSignals.push({
             type: 'nn',
             label: `MobileNet classifier: ${(prob * 100).toFixed(1)}% AI`,

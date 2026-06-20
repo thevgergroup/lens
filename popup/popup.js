@@ -42,7 +42,8 @@ const footerCache   = $('footerCacheCount');
 const minConfidence = $('minConfidence');
 const highlightStyle = $('highlightStyle');
 const hoverOnly     = $('hoverOnly');
-const clearCache    = $('clearCache');
+const clearCache       = $('clearCache');
+const footerClearCache = $('footerClearCache');
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -126,7 +127,7 @@ async function pollResults(tabId, urls) {
       }
     }
 
-    updateStats(response.stats);
+    updateStatsFromResults();
     renderResults();
     renderGallery();
   };
@@ -330,14 +331,21 @@ function bindEvents() {
     broadcastSettingsUpdate();
   });
 
-  clearCache.addEventListener('click', async () => {
+  async function doClearCache() {
     await browser.runtime.sendMessage({ type: 'CLEAR_CACHE' });
     results.clear();
+    updateStatsFromResults();
     renderResults();
     renderGallery();
     clearCache.textContent = 'Cache cleared ✓';
-    setTimeout(() => { clearCache.textContent = 'Clear analysis cache'; }, 2000);
-  });
+    footerClearCache.textContent = '✓';
+    setTimeout(() => {
+      clearCache.textContent = 'Clear analysis cache';
+      footerClearCache.textContent = '↺';
+    }, 2000);
+  }
+  clearCache.addEventListener('click', doClearCache);
+  footerClearCache.addEventListener('click', doClearCache);
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────
