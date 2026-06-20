@@ -171,6 +171,14 @@ function preprocessImageData(imageData) {
 const resultCache = new Map();
 const MAX_CACHE_SIZE = 500;
 
+// Debug log ring buffer — last 200 results, readable by popup
+const debugLog = [];
+const MAX_DEBUG_LOG = 200;
+
+// Feature flags — toggled via settings, persisted in chrome.storage.sync
+let featureFlags = { disableL5: false };
+chrome.storage.sync.get('lensFlags', d => { if (d.lensFlags) featureFlags = { ...featureFlags, ...d.lensFlags }; });
+
 // Per-tab URL tracking for badge counts: tabId → Set<url>
 const tabUrls = new Map();
 
@@ -284,13 +292,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'CLEAR_CACHE') {
     resultCache.clear();
     chrome.storage.session?.clear().catch(() => {});
-    // Tell all tabs to re-analyze from scratch
+    debugLog.length = 0;
     chrome.tabs.query({}, tabs => {
       for (const tab of tabs) {
         chrome.tabs.sendMessage(tab.id, { type: 'REANALYZE' }).catch(() => {});
       }
     });
     sendResponse({ ok: true });
+    return false;
+  }
+
+  if (message.type === 'GET_DEBUG_LOG') {
+    sendResponse({ log: debugLog.slice() });
+    return false;
+  }
+
+  if (message.type === 'SET_FLAGS') {
+    featureFlags = { ...featureFlags, ...message.flags };
+    chrome.storage.sync.set({ lensFlags: featureFlags });
+    sendResponse({ ok: true, flags: featureFlags });
     return false;
   }
 });
@@ -438,7 +458,7 @@ async function analyzeImage(url, domSignals) {
 
   // ── LAYER 5: MobileNetV3 neural classifier ──────────────────────────────
   // Only run on images large enough to be meaningful (avoids tiny icons)
-  if (imageData.width >= 64 && imageData.height >= 64) {
+  if (!featureFlags.disableL5 && imageData.width >= 64 && imageData.height >= 64) {
     const t5 = Date.now();
     try {
       const model = await getMobileNet();
@@ -539,9 +559,26 @@ function buildStats(urls) {
 
 const LAYER_NAMES = { url: 'L1 URL', exif: 'L2 EXIF', xmp: 'L2 XMP', c2pa: 'L2 C2PA',
                       iptc: 'L2 IPTC', 'png-meta': 'L2 PNG', dom: 'DOM', pixel: 'L3 Pixel',
-                      fft: 'L4 FFT', nn: 'L5 NN' };
+                      fft: 'L4 FFT', nn: 'L5 NN', forensic: 'L6 Forensic' };
 
 function logResult(shortUrl, result) {
+  // Push to debug ring buffer for popup debug tab
+  const entry = {
+    ts:      Date.now(),
+    url:     shortUrl,
+    verdict: result.interpretation?.level ?? '?',
+    score:   result.score,
+    layers:  result.layersCompleted,
+    signals: (result.signals || []).map(s => ({
+      type:   LAYER_NAMES[s.type] || s.type,
+      label:  s.label,
+      weight: s.weight,
+    })),
+    timing:  result.timing || {},
+    error:   result.error || null,
+  };
+  debugLog.push(entry);
+  if (debugLog.length > MAX_DEBUG_LOG) debugLog.shift();
   const { interpretation, score, signals, layersCompleted, timing, error } = result;
   const level = interpretation?.level ?? '?';
   const timingStr = Object.entries(timing || {}).map(([k, v]) => `${k}:${v}ms`).join(' ');
