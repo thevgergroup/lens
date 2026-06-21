@@ -54,6 +54,7 @@
     <button class="filter filter--active" data-filter="flagged" role="tab" aria-selected="true">Flagged</button>
     <button class="filter" data-filter="images" role="tab" aria-selected="false">Images</button>
     <button class="filter" data-filter="settings" role="tab" aria-selected="false">Settings</button>
+    <button class="filter" data-filter="debug" role="tab" aria-selected="false">Debug</button>
   </nav>
 
   <!-- Results list (Flagged tab) -->
@@ -105,13 +106,31 @@
       </p>
     </div>
     <div class="setting">
+      <label class="setting__label setting__label--inline" for="disableL5">
+        Disable L5 MobileNet (forensic-only mode)
+        <input type="checkbox" id="disableL5" class="setting__checkbox">
+      </label>
+      <p class="setting__note">Skip semantic classifier, use NPR forensic encoder only. Useful for testing.</p>
+    </div>
+    <div class="setting">
       <button class="btn btn--ghost" id="clearCache">Clear analysis cache</button>
     </div>
+  </section>
+
+  <!-- Debug panel -->
+  <section class="debug-panel" id="debugPanel" hidden aria-label="Debug log">
+    <div class="debug-panel__toolbar">
+      <span class="debug-panel__count" id="debugCount">0 results</span>
+      <button class="btn btn--ghost btn--sm" id="debugClear">Clear</button>
+      <button class="btn btn--ghost btn--sm" id="debugCopy">Copy</button>
+    </div>
+    <div class="debug-panel__log" id="debugLog"></div>
   </section>
 
   <!-- Footer -->
   <footer class="footer">
     <span class="footer__url" id="footerUrl"></span>
+    <button class="footer__clear" id="footerClearCache" title="Clear analysis cache">↺</button>
     <span class="footer__badge" id="footerCacheCount">0 cached</span>
   </footer>
 

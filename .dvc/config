@@ -1,0 +1,5 @@
+[core]
+    remote = lens-s3
+['remote "lens-s3"']
+    url = s3://lens-training-data/dvc
+    profile = vger

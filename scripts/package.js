@@ -36,9 +36,24 @@ const INCLUDE = [
 if (existsSync(outDir)) rmSync(outDir, { recursive: true });
 mkdirSync(outDir);
 
+// Training artifacts that live in lib/ but are NOT needed at runtime
+const EXCLUDE_LIB = [
+  'lib/mobilenet-keras-export',
+  'lib/mobilenet-ai-detector-keras.keras',
+  'lib/mobilenet-ai-detector.pt',
+  'lib/mobilenet-ai-detector.onnx',
+  'lib/forensic-keras-export',
+  'lib/forensic-ai-detector.keras',
+];
+
 // Build the zip using the system zip command (available on macOS and Linux)
 const includeArgs = INCLUDE.map(f => `"${f}"`).join(' ');
-const cmd = `cd "${ROOT}" && zip -r "${zipPath}" ${includeArgs} -x "*.DS_Store" -x "__MACOSX/*" -x "icons/*.pxd" -x "icons/screenshot*" -x "icons/2026*" -x "icons/*.png.bak"`;
+const excludeArgs = [
+  '*.DS_Store', '__MACOSX/*', 'icons/*.pxd', 'icons/screenshot*', 'icons/2026*', 'icons/*.png.bak',
+  ...EXCLUDE_LIB.map(f => `${f}/*`),
+  ...EXCLUDE_LIB,
+].map(f => `-x "${f}"`).join(' ');
+const cmd = `cd "${ROOT}" && zip -r "${zipPath}" ${includeArgs} ${excludeArgs}`;
 
 console.log(`Packaging Lens v${version}...`);
 execSync(cmd, { stdio: 'inherit' });

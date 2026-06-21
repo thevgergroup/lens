@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LENS Precision Scorecard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: monospace; background: #0a0c10; color: #e0e0e0; margin: 0; padding: 16px; font-size: 12px; }
+    h1 { font-size: 15px; color: #90cdf4; margin: 0 0 4px; }
+    #status { font-size: 11px; color: #718096; margin-bottom: 12px; }
+    #progress-bar { height: 3px; background: #2d3748; margin-bottom: 12px; border-radius: 2px; }
+    #progress-fill { height: 3px; background: #90cdf4; width: 0; border-radius: 2px; transition: width 0.3s; }
+    #mode-badge { display:inline-block; font-size:10px; padding:2px 8px; border-radius:3px; margin-left:8px; vertical-align:middle; }
+    #mode-badge.sw    { background:rgba(144,205,244,0.15); color:#90cdf4; }
+    #mode-badge.local { background:rgba(246,224,94,0.15);  color:#f6e05e; }
+
+    #scorecard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+    .metric-box { background: #1a1d23; border: 1px solid #2d3748; padding: 10px 14px; border-radius: 4px; }
+    .metric-box .label { font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric-box .value { font-size: 22px; font-weight: bold; margin-top: 2px; }
+    .metric-box .sub { font-size: 10px; color: #718096; margin-top: 1px; }
+    .good { color: #68d391; } .warn { color: #f6e05e; } .bad { color: #fc8181; } .neutral { color: #a0aec0; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    thead th { text-align: left; color: #718096; font-size: 10px; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid #2d3748; }
+    tbody tr:hover { background: #1a1d23; }
+    td { padding: 3px 6px; vertical-align: middle; }
+    td.name { color: #a0aec0; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    td.level { width: 80px; }
+    td.score { width: 50px; color: #718096; }
+    td.signals { color: #4a5568; font-size: 10px; max-width: 400px; }
+    .ok   { color: #68d391; } .miss { color: #fc8181; } .fp { color: #f6ad55; } .tn { color: #4a5568; }
+
+    h2 { font-size: 11px; color: #718096; margin: 20px 0 4px; border-top: 1px solid #2d3748; padding-top: 10px; }
+    .section-summary { font-size: 11px; color: #a0aec0; margin-bottom: 6px; }
+
+    /* Image pool — fixed position so images have real rendered size for shouldAnalyze() */
+    #img-pool { position: fixed; top: 0; left: 0; width: 200px; opacity: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+    #img-pool img { display: block; width: 200px; height: 200px; object-fit: cover; }
+  </style>
+</head>
+<body>
+  <h1>LENS Precision Scorecard <span id="mode-badge" class="local">detecting…</span></h1>
+  <div id="status">Initialising…</div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+
+  <div id="scorecard">
+    <div class="metric-box">
+      <div class="label">Recall</div>
+      <div class="value neutral" id="m-recall">—</div>
+      <div class="sub" id="m-recall-sub">AI detected</div>
+    </div>
+    <div class="metric-box">
+      <div class="label">False positive rate</div>
+      <div class="value neutral" id="m-fpr">—</div>
+      <div class="sub" id="m-fpr-sub">real flagged</div>
+    </div>
+    <div class="metric-box">
+      <div class="label">Precision</div>
+      <div class="value neutral" id="m-prec">—</div>
+      <div class="sub" id="m-prec-sub">TP / (TP+FP)</div>
+    </div>
+    <div class="metric-box">
+      <div class="label">F1</div>
+      <div class="value neutral" id="m-f1">—</div>
+      <div class="sub">harmonic mean</div>
+    </div>
+  </div>
+
+  <div style="font-size:10px;color:#4a5568;margin:-8px 0 6px;letter-spacing:0.04em;text-transform:uppercase;">Non-CDN — Other AI + training vs General real + training</div>
+  <div id="scorecard2" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+    <div class="metric-box">
+      <div class="label">Recall (non-CDN)</div>
+      <div class="value neutral" id="m2-recall">—</div>
+      <div class="sub" id="m2-recall-sub">AI detected</div>
+    </div>
+    <div class="metric-box">
+      <div class="label">FPR (non-CDN)</div>
+      <div class="value neutral" id="m2-fpr">—</div>
+      <div class="sub" id="m2-fpr-sub">real flagged</div>
+    </div>
+    <div class="metric-box">
+      <div class="label">Precision (non-CDN)</div>
+      <div class="value neutral" id="m2-prec">—</div>
+      <div class="sub" id="m2-prec-sub">TP / (TP+FP)</div>
+    </div>
+    <div class="metric-box">
+      <div class="label">F1 (non-CDN)</div>
+      <div class="value neutral" id="m2-f1">—</div>
+      <div class="sub">harmonic mean</div>
+    </div>
+  </div>
+
+  <div id="results"></div>
+
+  <!-- Off-screen pool: images injected here get picked up by the LENS content script -->
+  <div id="img-pool"></div>
+
+  <!-- Canvas for local L1-L4 fallback -->
+  <canvas id="canvas" style="display:none"></canvas>
+
+  <script type="module">
+    import {
+      checkUrlHeuristics,
+      parseMetadata,
+      analyzePixelStatistics,
+      analyzeFrequencyDomain,
+      interpretScore,
+    } from '/lib/detector.js';
+
+    const FLAGGED = new Set(['definite', 'likely', 'possible']);
+
+    // ── Image lists ───────────────────────────────────────────────────────────
+    const BASE = '/tests/fixtures/images';
+    const AI_GROK = Array.from({length: 48}, (_, i) =>
+      `${BASE}/ai/grok/grok-${String(i+1).padStart(3,'0')}.jpg`
+    );
+    const AI_OTHER = [
+      `${BASE}/ai/aurora-astronaut.webp`,
+      `${BASE}/ai/aurora-cherry-blossom.webp`,
+      `${BASE}/ai/aurora-cyberpunk-city.webp`,
+      `${BASE}/ai/aurora-mountain.webp`,
+      `${BASE}/ai/aurora-tea-dog.webp`,
+      `${BASE}/ai/aurora-vangogh-cat.webp`,
+      `${BASE}/ai/bing-creator-puppy.jpg`,
+      `${BASE}/ai/chatgpt-image.png`,
+      `${BASE}/ai/dalle-blue-man.png`,
+      `${BASE}/ai/dalle-puppy.webp`,
+      `${BASE}/ai/dalle-robot-letter.png`,
+      `${BASE}/ai/eyes.jpg`,
+      `${BASE}/ai/firefly-tabby-cat.jpg`,
+      `${BASE}/ai/flux-grid.jpg`,
+      `${BASE}/ai/flux-schnell-grid.jpg`,
+      `${BASE}/ai/sd-android.png`,
+      `${BASE}/ai/sd-golem.jpg`,
+      `${BASE}/ai/sd-img2img-mountains.png`,
+      `${BASE}/ai/sd-txt2img-01.png`,
+      `${BASE}/ai/sdxl-sample-01.jpg`,
+      `${BASE}/ai/sdxl-test.png`,
+    ];
+    const REAL_TWITTER = Array.from({length: 17}, (_, i) =>
+      `${BASE}/real/twitter/twitter-real-${String(i+1).padStart(3,'0')}.jpg`
+    ).concat([`${BASE}/real/twitter/twitter-real-018.png`]);
+    const REAL_OTHER = [
+      `${BASE}/real/ant-photo.jpg`,
+      `${BASE}/real/car-photo.jpg`,
+      `${BASE}/real/cat-photo.jpg`,
+      `${BASE}/real/city-nyc.jpg`,
+      `${BASE}/real/cloudscape.jpg`,
+      `${BASE}/real/crater-lake.jpg`,
+      `${BASE}/real/crater-lake-nocreds.jpg`,
+      `${BASE}/real/dice-photo.png`,
+      `${BASE}/real/dog-photo.jpg`,
+      `${BASE}/real/flower-macro.jpg`,
+      `${BASE}/real/golden-gate-bridge.jpg`,
+      `${BASE}/real/lena.png`,
+      `${BASE}/real/mountain-landscape.jpg`,
+      `${BASE}/real/nasa-astronaut-portrait.jpg`,
+      `${BASE}/real/nasa-earth.jpg`,
+      `${BASE}/real/nasa-madagascar-coast.jpg`,
+      `${BASE}/real/nasa-mars.jpg`,
+      `${BASE}/real/nasa-wildlife.jpg`,
+      `${BASE}/real/ocean-waves.jpg`,
+      `${BASE}/real/picsum-landscape-10.jpg`,
+      `${BASE}/real/picsum-landscape-110.jpg`,
+      `${BASE}/real/picsum-landscape-65.jpg`,
+      `${BASE}/real/picsum-portrait-91.jpg`,
+      `${BASE}/real/picsum-scene-200.jpg`,
+      `${BASE}/real/waterfall.jpg`,
+    ];
+    const T = `${BASE}/ai/training`;
+    const AI_TRAINING = [
+      `${T}/flux-dev-grid.jpg`, `${T}/flux-robot.webp`, `${T}/flux-schnell-grid.jpg`,
+      `${T}/mj-astronaut-mars.png`, `${T}/mj-greenwood-city.jpg`,
+      `${T}/sd1-img2img-mountains.png`, `${T}/sd1-txt2img-000.png`,
+      `${T}/sd1-txt2img-001.png`, `${T}/sd1-txt2img-002.png`,
+      `${T}/sdxl-000.jpg`, `${T}/sdxl-test-image.png`, `${T}/sdxl-turbo-tile.png`,
+      `${T}/wiki-dalle-robot-letter.png`, `${T}/wiki-ideogram-universe.webp`,
+      `${T}/wiki-sd-cyberpunk-city.webp`,
+    ];
+    const R = `${BASE}/real/training`;
+    const REAL_TRAINING = [
+      `${R}/picsum-014.jpg`,`${R}/picsum-015.jpg`,`${R}/picsum-016.jpg`,`${R}/picsum-017.jpg`,
+      `${R}/picsum-018.jpg`,`${R}/picsum-019.jpg`,`${R}/picsum-020.jpg`,`${R}/picsum-021.jpg`,
+      `${R}/picsum-022.jpg`,`${R}/picsum-023.jpg`,`${R}/picsum-030.jpg`,`${R}/picsum-031.jpg`,
+      `${R}/picsum-032.jpg`,`${R}/picsum-033.jpg`,`${R}/picsum-034.jpg`,`${R}/picsum-037.jpg`,
+      `${R}/picsum-039.jpg`,`${R}/picsum-040.jpg`,`${R}/picsum-042.jpg`,`${R}/picsum-043.jpg`,
+      `${R}/picsum-050.jpg`,`${R}/picsum-051.jpg`,`${R}/picsum-052.jpg`,`${R}/picsum-053.jpg`,
+      `${R}/picsum-054.jpg`,`${R}/picsum-055.jpg`,`${R}/picsum-056.jpg`,`${R}/picsum-057.jpg`,
+      `${R}/picsum-058.jpg`,`${R}/picsum-059.jpg`,`${R}/picsum-060.jpg`,`${R}/picsum-061.jpg`,
+      `${R}/picsum-062.jpg`,`${R}/picsum-063.jpg`,`${R}/picsum-064.jpg`,`${R}/picsum-066.jpg`,
+      `${R}/picsum-067.jpg`,`${R}/picsum-068.jpg`,`${R}/picsum-069.jpg`,`${R}/picsum-070.jpg`,
+      `${R}/picsum-071.jpg`,`${R}/picsum-072.jpg`,`${R}/picsum-073.jpg`,`${R}/picsum-074.jpg`,
+      `${R}/picsum-075.jpg`,`${R}/picsum-076.jpg`,`${R}/picsum-077.jpg`,`${R}/picsum-078.jpg`,
+      `${R}/picsum-079.jpg`,`${R}/picsum-080.jpg`,
+      `${R}/wiki-ant.jpg`,`${R}/wiki-beaver.jpg`,`${R}/wiki-cat.jpg`,`${R}/wiki-cat3.jpg`,
+      `${R}/wiki-chocolate.jpg`,`${R}/wiki-lion.jpg`,`${R}/wiki-stonehenge.jpg`,
+      `${R}/wiki-sunflower2.jpg`,`${R}/wiki-waterfall.jpg`,
+    ];
+
+    const ALL = [
+      { list: AI_GROK,      isAI: true,  cdnOnly: true,  label: 'Grok / Aurora via X CDN' },
+      { list: AI_OTHER,     isAI: true,  cdnOnly: false, label: 'Other AI (DALL-E, SD, Flux, Aurora samples)' },
+      { list: AI_TRAINING,  isAI: true,  cdnOnly: false, label: 'AI training set (SD, SDXL, Flux, MJ, Ideogram)' },
+      { list: REAL_TWITTER, isAI: false, cdnOnly: true,  label: 'Real photos via X CDN' },
+      { list: REAL_OTHER,   isAI: false, cdnOnly: false, label: 'Real photographs — general' },
+      { list: REAL_TRAINING,isAI: false, cdnOnly: false, label: 'Real training set (Picsum + Wikimedia)' },
+    ];
+    const ALL_SRCS = ALL.flatMap(g => g.list);
+    const TOTAL = ALL_SRCS.length;
+
+    // ── Image pool: inject <img> tags so the LENS content script processes them ─
+    // Content scripts run in an isolated world; we communicate via the shared DOM.
+    // The content script's MutationObserver picks up new <img> nodes, sends them
+    // to the SW, and writes data-lens-level/data-lens-confidence back to the DOM.
+    const pool = document.getElementById('img-pool');
+    const imgMap = new Map(); // absUrl → <img>
+
+    // Inject one image and wait for data-lens-level to appear (written by content script).
+    // One-at-a-time keeps the SW alive — flooding 186 messages causes it to be suspended
+    // mid-queue by Chrome's MV3 idle timer between bursts.
+    function injectAndWait(src, timeoutMs = 90000) {
+      return new Promise(resolve => {
+        const absUrl = new URL(src, location.href).href;
+        const img = document.createElement('img');
+        img.src = absUrl;
+        img.width = 200;
+        img.height = 200;
+        // Keep only this one image in the pool — multiple stacked images push later
+        // ones below the viewport, preventing IntersectionObserver from firing.
+        while (pool.firstChild) pool.removeChild(pool.firstChild);
+        pool.appendChild(img);
+        imgMap.set(absUrl, img);
+
+        const observer = new MutationObserver(() => {
+          if (img.hasAttribute('data-lens-level')) {
+            observer.disconnect();
+            clearTimeout(timer);
+            resolve({
+              level:      img.getAttribute('data-lens-level'),
+              score:      Number(img.getAttribute('data-lens-confidence')) / 100,
+              label:      img.getAttribute('data-lens-label') || '',
+              signals:    [],
+            });
+          }
+        });
+        observer.observe(img, { attributes: true, attributeFilter: ['data-lens-level'] });
+
+        const timer = setTimeout(() => {
+          observer.disconnect();
+          resolve({ level: 'clean', score: 0, label: 'timeout', signals: [] });
+        }, timeoutMs);
+      });
+    }
+
+    // ── Local fallback: L1–L4 ─────────────────────────────────────────────────
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    async function analyzeLocal(src) {
+      const isLossy = /\.(jpe?g|webp)$/i.test(src);
+      const absUrl = new URL(src, location.href).href;
+      const l1 = checkUrlHeuristics(absUrl);
+      let l2 = { score: 0, signals: [] };
+      try { const buf = await fetch(src).then(r => r.arrayBuffer()); l2 = await parseMetadata(buf); } catch {}
+      let l3 = { score: 0, signals: [] }, l4 = { score: 0, signals: [] };
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = src; });
+        const W = Math.min(img.naturalWidth, 512), H = Math.min(img.naturalHeight, 512);
+        canvas.width = W; canvas.height = H;
+        ctx.clearRect(0, 0, W, H);
+        ctx.drawImage(img, 0, 0, W, H);
+        const imageData = ctx.getImageData(0, 0, W, H);
+        l3 = analyzePixelStatistics(imageData, isLossy);
+        l4 = analyzeFrequencyDomain(imageData);
+      } catch {}
+      const allSignals = [...l1.signals, ...l2.signals, ...l3.signals, ...l4.signals];
+      const score = Math.max(l1.score, l2.score, l3.score, l4.score);
+      const interp = interpretScore(score, allSignals);
+      return { level: interp.level, score, label: interp.label, signals: allSignals };
+    }
+
+    // ── Detect extension via probe image ─────────────────────────────────────
+    // Inject one probe image and wait up to 30s — SW cold-start loads TF.js WASM + models.
+    document.getElementById('status').textContent = 'Waiting for LENS extension… (up to 30s for model load)';
+    const probeResult = await injectAndWait(ALL_SRCS[0], 30000);
+    const hasSW = probeResult.label !== 'timeout';
+
+    const modeBadge = document.getElementById('mode-badge');
+    if (hasSW) {
+      modeBadge.textContent = 'Full pipeline L1–L6 via LENS extension';
+      modeBadge.className = 'sw';
+    } else {
+      modeBadge.textContent = 'L1–L4 local only (extension not detected)';
+      modeBadge.className = 'local';
+    }
+
+    // ── Scoring state ─────────────────────────────────────────────────────────
+    let tp = 0, fp = 0, fn = 0, tn = 0, done = 0;
+    let tp2 = 0, fp2 = 0, fn2 = 0, tn2 = 0;
+
+    function pct(v)   { return (v * 100).toFixed(0) + '%'; }
+    function cls(v)   { return v >= 0.8 ? 'good' : v >= 0.55 ? 'warn' : 'bad'; }
+    function fpcls(v) { return v <= 0.15 ? 'good' : v <= 0.35 ? 'warn' : 'bad'; }
+
+    function updateScorecard() {
+      const recall = (tp+fn)>0 ? tp/(tp+fn) : 0, fpr = (fp+tn)>0 ? fp/(fp+tn) : 0;
+      const prec   = (tp+fp)>0 ? tp/(tp+fp) : 1, f1  = (prec+recall)>0 ? 2*prec*recall/(prec+recall) : 0;
+      const recall2=(tp2+fn2)>0?tp2/(tp2+fn2):0, fpr2=(fp2+tn2)>0?fp2/(fp2+tn2):0;
+      const prec2  =(tp2+fp2)>0?tp2/(tp2+fp2):1, f12 =(prec2+recall2)>0?2*prec2*recall2/(prec2+recall2):0;
+      const set=(id,val,c,sub)=>{
+        document.getElementById(id).textContent=val;
+        document.getElementById(id).className=`value ${c}`;
+        if(sub) document.getElementById(id+'-sub').textContent=sub;
+      };
+      set('m-recall', pct(recall),  cls(recall),   `${tp} / ${tp+fn} AI`);
+      set('m-fpr',    pct(fpr),     fpcls(fpr),    `${fp} / ${fp+tn} real`);
+      set('m-prec',   pct(prec),    cls(prec),     `${tp} TP, ${fp} FP`);
+      set('m-f1',     pct(f1),      cls(f1),       null);
+      set('m2-recall',pct(recall2), cls(recall2),  `${tp2} / ${tp2+fn2} non-CDN AI`);
+      set('m2-fpr',   pct(fpr2),    fpcls(fpr2),   `${fp2} / ${fp2+tn2} real`);
+      set('m2-prec',  pct(prec2),   cls(prec2),    `${tp2} TP, ${fp2} FP`);
+      set('m2-f1',    pct(f12),     cls(f12),      null);
+      document.getElementById('progress-fill').style.width=`${(done/TOTAL)*100}%`;
+      document.getElementById('status').textContent=`${done} / ${TOTAL} processed`;
+    }
+
+    function makeSection(group) {
+      const div=document.createElement('div');
+      const h2=document.createElement('h2');
+      h2.textContent=group.label; div.appendChild(h2);
+      const summary=document.createElement('div');
+      summary.className='section-summary'; summary.textContent='Running…'; div.appendChild(summary);
+      const table=document.createElement('table');
+      table.innerHTML=`<thead><tr><th>Image</th><th>Level</th><th>Score</th><th>Signals</th></tr></thead>`;
+      const tbody=document.createElement('tbody');
+      table.appendChild(tbody); div.appendChild(table);
+      document.getElementById('results').appendChild(div);
+      let secTP=0,secFP=0,secTotal=0;
+      return {
+        addRow(src,result) {
+          const name=src.split('/').pop();
+          const {level,score,signals=[]}=result;
+          const flagged=FLAGGED.has(level);
+          secTotal++;
+          if(group.isAI&&flagged) secTP++;
+          if(!group.isAI&&flagged) secFP++;
+          const rowCls=group.isAI?(flagged?'ok':'miss'):(flagged?'fp':'tn');
+          const tag=group.isAI?(flagged?'✓':'✗'):(flagged?'FP':'✓');
+          const sigLabels=signals.map(s=>s.label).join(' | ');
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td class="name ${rowCls}">${tag} ${name}</td><td class="level">${level}</td><td class="score">${Number(score).toFixed(2)}</td><td class="signals">${sigLabels}</td>`;
+          tbody.appendChild(tr);
+          if(!group.isAI&&flagged) {
+            console.warn(`FP [${group.label}] ${name} score=${Number(score).toFixed(2)} level=${level}`);
+            for(const s of signals) console.warn(`  [${s.type}] ${s.label} weight=${s.weight}`);
+          }
+          summary.textContent=group.isAI?`${secTP}/${secTotal} detected`:`${secFP}/${secTotal} false positives`;
+        }
+      };
+    }
+
+    // ── Run ───────────────────────────────────────────────────────────────────
+    if (hasSW) {
+      // Record the probe result for the first image (already analyzed during detection)
+      const probeResults = new Map();
+      probeResults.set(new URL(ALL_SRCS[0], location.href).href, probeResult);
+
+      for (const group of ALL) {
+        const section = makeSection(group);
+        for (const src of group.list) {
+          document.getElementById('status').textContent = `Analysing ${src.split('/').pop()}… (${done+1}/${TOTAL})`;
+          const absUrl = new URL(src, location.href).href;
+
+          // First image was the probe — use its cached result
+          const result = probeResults.has(absUrl)
+            ? probeResults.get(absUrl)
+            : await injectAndWait(src);
+          const flagged = FLAGGED.has(result.level);
+          if (group.isAI) {
+            flagged ? tp++ : fn++;
+            if (!group.cdnOnly) { flagged ? tp2++ : fn2++; }
+          } else {
+            flagged ? fp++ : tn++;
+            if (!group.cdnOnly) { flagged ? fp2++ : tn2++; }
+          }
+          done++;
+          section.addRow(src, result);
+          updateScorecard();
+        }
+      }
+    } else {
+      // Local L1-L4 fallback
+      for (const group of ALL) {
+        const section = makeSection(group);
+        for (const src of group.list) {
+          document.getElementById('status').textContent=`Analysing ${src.split('/').pop()}… (${done+1}/${TOTAL})`;
+          let result;
+          try { result = await analyzeLocal(src); }
+          catch(e) { result = { level:'clean', score:0, label:'Error', signals:[{label:e.message,type:'error',weight:0}] }; }
+          const flagged=FLAGGED.has(result.level);
+          if(group.isAI){ flagged?tp++:fn++; if(!group.cdnOnly){flagged?tp2++:fn2++;} }
+          else          { flagged?fp++:tn++; if(!group.cdnOnly){flagged?fp2++:tn2++;} }
+          done++;
+          section.addRow(src,result);
+          updateScorecard();
+        }
+      }
+    }
+
+    document.getElementById('status').textContent = `Complete — ${TOTAL} images analysed`;
+  </script>
+</body>
+</html>

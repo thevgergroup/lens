@@ -13,10 +13,172 @@ import {
   CONFIDENCE_THRESHOLDS,
 } from '../lib/detector.js';
 
+import {
+  loadGraphModel,
+  tensor4d,
+  tidy,
+  setBackend,
+  ready,
+} from '../lib/tfjs/tfjs.min.js';
+
+// ---------------------------------------------------------------------------
+// MobileNetV3 model — loaded once, reused for all analyses
+// ---------------------------------------------------------------------------
+
+// ── Model loading ─────────────────────────────────────────────────────────────
+
+const IMAGENET_MEAN = [0.485, 0.456, 0.406];
+const IMAGENET_STD  = [0.229, 0.224, 0.225];
+
+let mobileNetModel = null;
+let mobileNetLoading = null;
+let forensicModel = null;
+let forensicLoading = null;
+let tfBackendReady = null;
+
+async function ensureTFBackend() {
+  if (tfBackendReady) return tfBackendReady;
+  tfBackendReady = (async () => {
+    // MV3 service workers lack URL.createObjectURL, so WASM backend is unavailable.
+    // CPU backend (pure JS) works in SW context without DOM APIs.
+    await setBackend('cpu');
+    await ready();
+  })();
+  return tfBackendReady;
+}
+
+async function getMobileNet() {
+  if (mobileNetModel) return mobileNetModel;
+  if (mobileNetLoading) return mobileNetLoading;
+  mobileNetLoading = (async () => {
+    try {
+      await ensureTFBackend();
+      const modelUrl = chrome.runtime.getURL('lib/mobilenet-tfjs/model.json');
+      mobileNetModel = await loadGraphModel(modelUrl);
+      console.log('[Lens SW] MobileNet model loaded');
+    } catch (err) {
+      console.warn('[Lens SW] MobileNet load failed:', err.message);
+      mobileNetModel = null;
+    }
+    return mobileNetModel;
+  })();
+  return mobileNetLoading;
+}
+
+async function getForensicModel() {
+  if (forensicModel) return forensicModel;
+  if (forensicLoading) return forensicLoading;
+  forensicLoading = (async () => {
+    try {
+      await ensureTFBackend();
+      const modelUrl = chrome.runtime.getURL('lib/forensic-tfjs/model.json');
+      forensicModel = await loadGraphModel(modelUrl);
+      console.log('[Lens SW] Forensic model loaded');
+    } catch (err) {
+      console.warn('[Lens SW] Forensic model not available:', err.message);
+      forensicModel = null;
+    }
+    return forensicModel;
+  })();
+  return forensicLoading;
+}
+
+// Kick off model loading on SW startup
+getMobileNet();
+getForensicModel();
+
+// ── Preprocessing ─────────────────────────────────────────────────────────────
+
+// NPR (Neighboring Pixel Residual) transform.
+// Downsample 2x nearest-neighbor then upsample 2x, subtract from original.
+// Isolates upsampling artifacts common to all generative models (GANs, diffusion).
+// Content is suppressed; forensic artifacts are amplified.
+// Mirrors the Python apply_npr() in train-forensic-encoder.py exactly.
+function applyNPR(rgba, width, height, outSize) {
+  const buf = new Float32Array(outSize * outSize * 3);
+  const xScale = width  / outSize;
+  const yScale = height / outSize;
+
+  for (let y = 0; y < outSize; y++) {
+    for (let x = 0; x < outSize; x++) {
+      // Bilinear sample from source
+      const srcX = x * xScale, srcY = y * yScale;
+      const x0 = Math.floor(srcX), y0 = Math.floor(srcY);
+      const x1 = Math.min(x0 + 1, width - 1);
+      const y1 = Math.min(y0 + 1, height - 1);
+      const dx = srcX - x0, dy = srcY - y0;
+
+      // Nearest-neighbor 2x downsample+upsample: snap to even pixel
+      const nx = (x0 & ~1), ny = (y0 & ~1);
+      const nx1 = Math.min(nx, width - 1), ny1 = Math.min(ny, height - 1);
+
+      const base = (y * outSize + x) * 3;
+      for (let c = 0; c < 3; c++) {
+        const i00 = (y0 * width + x0) * 4 + c;
+        const i10 = (y0 * width + x1) * 4 + c;
+        const i01 = (y1 * width + x0) * 4 + c;
+        const i11 = (y1 * width + x1) * 4 + c;
+        const pixel = (rgba[i00]*(1-dx)*(1-dy) + rgba[i10]*dx*(1-dy) +
+                       rgba[i01]*(1-dx)*dy      + rgba[i11]*dx*dy) / 255;
+
+        const ni = (ny1 * width + nx1) * 4 + c;
+        const recon = rgba[ni] / 255;
+
+        buf[base + c] = (pixel - recon) * (2 / 3);
+      }
+    }
+  }
+  return buf;
+}
+
+function preprocessImageData(imageData) {
+  const { width, height, data } = imageData;
+  const SIZE = 224;
+  const buf = new Float32Array(SIZE * SIZE * 3);
+  const xScale = width  / SIZE;
+  const yScale = height / SIZE;
+
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const srcX = x * xScale;
+      const srcY = y * yScale;
+      const x0 = Math.floor(srcX), y0 = Math.floor(srcY);
+      const x1 = Math.min(x0 + 1, width  - 1);
+      const y1 = Math.min(y0 + 1, height - 1);
+      const dx = srcX - x0, dy = srcY - y0;
+
+      const idx = (c) => {
+        const i00 = (y0 * width + x0) * 4 + c;
+        const i10 = (y0 * width + x1) * 4 + c;
+        const i01 = (y1 * width + x0) * 4 + c;
+        const i11 = (y1 * width + x1) * 4 + c;
+        return (data[i00] * (1-dx)*(1-dy) + data[i10] * dx*(1-dy) +
+                data[i01] * (1-dx)*dy     + data[i11] * dx*dy) / 255;
+      };
+
+      const base = (y * SIZE + x) * 3;
+      buf[base]     = (idx(0) - IMAGENET_MEAN[0]) / IMAGENET_STD[0];
+      buf[base + 1] = (idx(1) - IMAGENET_MEAN[1]) / IMAGENET_STD[1];
+      buf[base + 2] = (idx(2) - IMAGENET_MEAN[2]) / IMAGENET_STD[2];
+    }
+  }
+  return buf;
+}
+
 // In-memory result cache: URL hash → result
 // Survives across content script navigations within a browser session
 const resultCache = new Map();
 const MAX_CACHE_SIZE = 500;
+
+// Debug log ring buffer — last 200 results, readable by popup
+const debugLog = [];
+const MAX_DEBUG_LOG = 200;
+
+// Feature flags — toggled via settings, persisted in chrome.storage.sync
+// disableL5: true by default — MobileNet v1.2 has calibration issues causing
+// high FPR on real photos. Enable experimentally via Settings → Debug tab.
+let featureFlags = { disableL5: true };
+chrome.storage.sync.get('lensFlags', d => { if (d.lensFlags) featureFlags = { ...featureFlags, ...d.lensFlags }; });
 
 // Per-tab URL tracking for badge counts: tabId → Set<url>
 const tabUrls = new Map();
@@ -25,6 +187,24 @@ const tabUrls = new Map();
 const analysisQueue = new Map(); // url → Promise
 const MAX_CONCURRENT = 4;
 let activeCount = 0;
+
+// Global SW keepalive — prevents suspension between sequential analyses.
+// Fires every 10s; cleared 5s after the last analysis completes.
+let globalKeepalive = null;
+let keepaliveExpiry = null;
+
+function touchKeepalive() {
+  keepaliveExpiry = Date.now() + 5000;
+  if (globalKeepalive) return;
+  globalKeepalive = setInterval(() => {
+    if (Date.now() > keepaliveExpiry) {
+      clearInterval(globalKeepalive);
+      globalKeepalive = null;
+    } else {
+      chrome.runtime.getPlatformInfo(() => {});
+    }
+  }, 10000);
+}
 
 // ---------------------------------------------------------------------------
 // Message handler (from content scripts)
@@ -52,6 +232,7 @@ self.addEventListener('message', async (event) => {
 
     case 'CLEAR_CACHE':
       resultCache.clear();
+      chrome.storage.session?.clear().catch(() => {});
       event.source.postMessage({ type: 'CACHE_CLEARED', id });
       break;
   }
@@ -67,6 +248,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const shortUrl = url.split('/').pop().slice(0, 40);
     console.log(`[Lens SW] ANALYZE_IMAGE received: ${shortUrl}`);
 
+    const tabId = sender?.tab?.id;
+
+    // Keep SW alive during and between sequential analyses
+    touchKeepalive();
+
     // Check cache for immediate inline response
     if (resultCache.has(url)) {
       console.log(`[Lens SW] Cache hit: ${shortUrl}`);
@@ -76,11 +262,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return false;
     }
 
-    // Use event.waitUntil pattern via a port keepalive to prevent SW termination
-    // during async fetch+decode (MV3 SW can be suspended mid-flight otherwise)
-    const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000);
-
-    const tabId = sender?.tab?.id;
+    // Per-analysis keepalive as belt-and-suspenders during async fetch+decode
+    const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 10000);
 
     analyzeImage(url, domSignals || {})
       .then(result => {
@@ -91,7 +274,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           updateTabBadge(tabId);
           chrome.tabs.sendMessage(tabId, { type: 'ANALYSIS_RESULT', url, result }).catch(() => {});
         }
-        // Send via response channel (Chrome) AND push to tab (Firefox fallback)
+        touchKeepalive(); // reset idle window before clearing per-analysis keepalive
         try { sendResponse({ result, fromCache: false }); } catch (_) {}
       })
       .catch(err => {
@@ -124,6 +307,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'GET_CACHE_SIZE') {
     sendResponse({ size: resultCache.size });
+    return false;
+  }
+
+  if (message.type === 'CLEAR_CACHE') {
+    resultCache.clear();
+    chrome.storage.session?.clear().catch(() => {});
+    debugLog.length = 0;
+    chrome.tabs.query({}, tabs => {
+      for (const tab of tabs) {
+        chrome.tabs.sendMessage(tab.id, { type: 'REANALYZE' }).catch(() => {});
+      }
+    });
+    sendResponse({ ok: true });
+    return false;
+  }
+
+  if (message.type === 'GET_DEBUG_LOG') {
+    sendResponse({ log: debugLog.slice() });
+    return false;
+  }
+
+  if (message.type === 'SET_FLAGS') {
+    featureFlags = { ...featureFlags, ...message.flags };
+    chrome.storage.sync.set({ lensFlags: featureFlags });
+    sendResponse({ ok: true, flags: featureFlags });
     return false;
   }
 });
@@ -269,6 +477,72 @@ async function analyzeImage(url, domSignals) {
     layer = 4;
   }
 
+  // ── LAYER 5: MobileNetV3 neural classifier ──────────────────────────────
+  // L5 MobileNet: disabled by default — MobileNet v1.2 has calibration issues
+  // that cause high false-positive rates on real photos (Picsum, stock photos).
+  // Enable via featureFlags.disableL5 = false in settings for experimental use.
+  if (!featureFlags.disableL5 && imageData.width >= 64 && imageData.height >= 64) {
+    const t5 = Date.now();
+    try {
+      const model = await getMobileNet();
+      if (model) {
+        const prob = tidy(() => {
+          const pixels = preprocessImageData(imageData);
+          const input = tensor4d(pixels, [1, 224, 224, 3]);
+          const output = model.predict(input);
+          return output.dataSync()[0];
+        });
+        timing.l5 = Date.now() - t5;
+
+        if (prob >= 0.70) {
+          // Scale probability to weight: 0.70→0.60, 1.00→0.95 (capped at 0.95)
+          const weight = Math.min(0.95, 0.60 + (prob - 0.70) * 1.167);
+          allSignals.push({
+            type: 'nn',
+            label: `MobileNet classifier: ${(prob * 100).toFixed(1)}% AI`,
+            weight,
+          });
+          maxScore = Math.max(maxScore, weight);
+        }
+        layer = 5;
+      }
+    } catch (err) {
+      console.warn('[Lens SW] MobileNet inference failed:', err.message);
+    }
+  }
+
+  // ── LAYER 6: Forensic NPR encoder ───────────────────────────────────────
+  // Examines HOW the image was made (upsampling artifacts, frequency anomalies)
+  // rather than WHAT is in it. Generalizes to unseen generators.
+  if (imageData.width >= 64 && imageData.height >= 64) {
+    const t6 = Date.now();
+    try {
+      const model = await getForensicModel();
+      if (model) {
+        const prob = tidy(() => {
+          const pixels = applyNPR(imageData.data, imageData.width, imageData.height, 224);
+          const input = tensor4d(pixels, [1, 224, 224, 3]);
+          const output = model.predict(input);
+          return output.dataSync()[0];
+        });
+        timing.l6 = Date.now() - t6;
+
+        if (prob >= 0.50) {
+          const weight = Math.min(0.95, prob - 0.05);
+          allSignals.push({
+            type: 'forensic',
+            label: `Forensic encoder: ${(prob * 100).toFixed(1)}% AI`,
+            weight,
+          });
+          maxScore = Math.max(maxScore, weight);
+        }
+        layer = 6;
+      }
+    } catch (err) {
+      console.warn('[Lens SW] Forensic model inference failed:', err.message);
+    }
+  }
+
   return buildResult(url, maxScore, allSignals, layer, timing);
 }
 
@@ -307,9 +581,27 @@ function buildStats(urls) {
 // ---------------------------------------------------------------------------
 
 const LAYER_NAMES = { url: 'L1 URL', exif: 'L2 EXIF', xmp: 'L2 XMP', c2pa: 'L2 C2PA',
-                      iptc: 'L2 IPTC', 'png-meta': 'L2 PNG', dom: 'DOM', pixel: 'L3 Pixel', fft: 'L4 FFT' };
+                      iptc: 'L2 IPTC', 'png-meta': 'L2 PNG', dom: 'DOM', pixel: 'L3 Pixel',
+                      fft: 'L4 FFT', nn: 'L5 NN', forensic: 'L6 Forensic' };
 
 function logResult(shortUrl, result) {
+  // Push to debug ring buffer for popup debug tab
+  const entry = {
+    ts:      Date.now(),
+    url:     shortUrl,
+    verdict: result.interpretation?.level ?? '?',
+    score:   result.score,
+    layers:  result.layersCompleted,
+    signals: (result.signals || []).map(s => ({
+      type:   LAYER_NAMES[s.type] || s.type,
+      label:  s.label,
+      weight: s.weight,
+    })),
+    timing:  result.timing || {},
+    error:   result.error || null,
+  };
+  debugLog.push(entry);
+  if (debugLog.length > MAX_DEBUG_LOG) debugLog.shift();
   const { interpretation, score, signals, layersCompleted, timing, error } = result;
   const level = interpretation?.level ?? '?';
   const timingStr = Object.entries(timing || {}).map(([k, v]) => `${k}:${v}ms`).join(' ');
@@ -371,16 +663,21 @@ async function fetchImageBytes(url) {
 // ---------------------------------------------------------------------------
 
 async function decodeImageToData(arrayBuffer) {
+  const MAX_DIM = 512;
+
   // Use ImageDecoder API if available (Chrome 94+, Safari 16+)
   if (typeof ImageDecoder !== 'undefined') {
     try {
       const blob = new Blob([arrayBuffer]);
       const decoder = new ImageDecoder({ data: blob.stream(), type: sniffMimeType(arrayBuffer) });
       const { image } = await decoder.decode();
-      const canvas = new OffscreenCanvas(image.displayWidth, image.displayHeight);
+      const scale = Math.min(1, MAX_DIM / Math.max(image.displayWidth, image.displayHeight));
+      const w = Math.floor(image.displayWidth * scale);
+      const h = Math.floor(image.displayHeight * scale);
+      const canvas = new OffscreenCanvas(w, h);
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(image, 0, 0);
-      return ctx.getImageData(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, w, h);
+      return ctx.getImageData(0, 0, w, h);
     } catch (_) {}
   }
 
@@ -388,9 +685,7 @@ async function decodeImageToData(arrayBuffer) {
   const blob = new Blob([arrayBuffer]);
   const bitmap = await createImageBitmap(blob);
 
-  // Cap size to avoid OOM
-  const maxDim = 1024;
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
   const w = Math.floor(bitmap.width * scale);
   const h = Math.floor(bitmap.height * scale);
 

@@ -75,3 +75,4 @@ describe('L3: Pixel statistics — uniform color', () => {
     expect(() => analyzePixelStatistics(img)).not.toThrow();
   });
 });
+

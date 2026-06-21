@@ -1,6 +1,6 @@
 {
   "name": "lens-ai-image-detector",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,12 +11,21 @@
     "test:all": "bash tests/run-all.sh",
     "fixture:serve": "npx serve tests/fixtures -l 3456 --cors --no-clipboard",
     "fixture:download": "node tests/fixtures/download-fixtures.js",
+    "mallet:extract": "node tests/fixtures/extract-mallet-features.mjs",
+    "mallet:train": "python3 tests/fixtures/train-mallet-lr.py",
+    "mallet:pipeline": "npm run mallet:extract && npm run mallet:train",
+    "mobilenet:train": "/tmp/tfjs-venv/bin/python3 tests/fixtures/train-mobilenet-keras.py",
+    "mobilenet:bundle": "node scripts/bundle-tfjs.mjs",
     "package": "node scripts/package.js",
     "sign:firefox": "node scripts/sign-firefox.js"
   },
   "devDependencies": {
-    "vitest": "^2.0.0",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
     "serve": "^14.0.0",
+    "sharp": "^0.35.1",
+    "vitest": "^2.0.0",
     "web-ext": "^8.0.0"
   }
 }

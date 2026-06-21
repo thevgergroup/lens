@@ -15,6 +15,7 @@ let settings      = {
   showOnHoverOnly:     false,
   highlightStyle:      'outline',
 };
+let flags = { disableL5: false };
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
 
@@ -42,12 +43,20 @@ const footerCache   = $('footerCacheCount');
 const minConfidence = $('minConfidence');
 const highlightStyle = $('highlightStyle');
 const hoverOnly     = $('hoverOnly');
-const clearCache    = $('clearCache');
+const clearCache       = $('clearCache');
+const footerClearCache = $('footerClearCache');
+const disableL5        = $('disableL5');
+const debugPanel       = $('debugPanel');
+const debugLogEl       = $('debugLog');
+const debugCount       = $('debugCount');
+const debugClear       = $('debugClear');
+const debugCopy        = $('debugCopy');
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
 async function init() {
   await loadSettings();
+  await loadFlags();
   applySettingsToUI();
   bindEvents();
 
@@ -126,9 +135,10 @@ async function pollResults(tabId, urls) {
       }
     }
 
-    updateStats(response.stats);
+    updateStatsFromResults();
     renderResults();
     renderGallery();
+    if (currentFilter === 'debug') renderDebugLog();
   };
 
   await tick();
@@ -306,9 +316,11 @@ function bindEvents() {
       resultsPanel.hidden  = currentFilter !== 'flagged';
       galleryPanel.hidden  = currentFilter !== 'images';
       settingsPanel.hidden = currentFilter !== 'settings';
+      debugPanel.hidden    = currentFilter !== 'debug';
 
       if (currentFilter === 'flagged') renderResults();
       if (currentFilter === 'images')  renderGallery();
+      if (currentFilter === 'debug')   renderDebugLog();
     });
   });
 
@@ -330,13 +342,41 @@ function bindEvents() {
     broadcastSettingsUpdate();
   });
 
-  clearCache.addEventListener('click', async () => {
+  async function doClearCache() {
     await browser.runtime.sendMessage({ type: 'CLEAR_CACHE' });
     results.clear();
+    updateStatsFromResults();
     renderResults();
     renderGallery();
+    renderDebugLog();
     clearCache.textContent = 'Cache cleared ✓';
-    setTimeout(() => { clearCache.textContent = 'Clear analysis cache'; }, 2000);
+    footerClearCache.textContent = '✓';
+    setTimeout(() => {
+      clearCache.textContent = 'Clear analysis cache';
+      footerClearCache.textContent = '↺';
+    }, 2000);
+  }
+  clearCache.addEventListener('click', doClearCache);
+  footerClearCache.addEventListener('click', doClearCache);
+
+  disableL5.addEventListener('change', async () => {
+    flags.disableL5 = disableL5.checked;
+    await browser.runtime.sendMessage({ type: 'SET_FLAGS', flags });
+  });
+
+  debugClear.addEventListener('click', async () => {
+    await browser.runtime.sendMessage({ type: 'CLEAR_CACHE' });
+    results.clear();
+    renderDebugLog();
+  });
+
+  debugCopy.addEventListener('click', async () => {
+    const resp = await browser.runtime.sendMessage({ type: 'GET_DEBUG_LOG' }).catch(() => null);
+    if (!resp?.log) return;
+    const text = resp.log.map(formatDebugEntry).join('\n\n');
+    navigator.clipboard.writeText(text).catch(() => {});
+    debugCopy.textContent = 'Copied ✓';
+    setTimeout(() => { debugCopy.textContent = 'Copy'; }, 2000);
   });
 }
 
@@ -351,6 +391,15 @@ async function loadSettings() {
   });
 }
 
+async function loadFlags() {
+  return new Promise(resolve => {
+    browser.storage.sync.get('lensFlags', (data) => {
+      if (data.lensFlags) flags = { ...flags, ...data.lensFlags };
+      resolve();
+    });
+  });
+}
+
 async function saveSettings() {
   return browser.storage.sync.set({ lensSettings: settings });
 }
@@ -360,6 +409,7 @@ function applySettingsToUI() {
   minConfidence.value     = settings.minConfidenceToShow;
   highlightStyle.value    = settings.highlightStyle;
   hoverOnly.checked       = settings.showOnHoverOnly;
+  disableL5.checked       = flags.disableL5;
 }
 
 async function broadcastSettingsUpdate() {
@@ -375,6 +425,56 @@ function escapeHtml(str) {
 }
 function escapeAttr(str) {
   return String(str).replace(/"/g,'%22').replace(/'/g,'%27');
+}
+
+// ── Debug log ─────────────────────────────────────────────────────────────
+
+function formatDebugEntry(e) {
+  const time = new Date(e.ts).toLocaleTimeString();
+  const signals = e.signals.length
+    ? e.signals.map(s => `  ${s.type.padEnd(14)} ${s.label}  (${(s.weight * 100).toFixed(1)}%)`).join('\n')
+    : '  (no signals)';
+  const timing = Object.entries(e.timing).map(([k, v]) => `${k}:${v}ms`).join(' ');
+  return `[${time}] ${e.verdict.toUpperCase()}  score:${e.score?.toFixed(3)}  layers:${e.layers}  ${timing}\n${e.url}\n${signals}${e.error ? `\n  ⚠ ${e.error}` : ''}`;
+}
+
+async function renderDebugLog() {
+  const resp = await browser.runtime.sendMessage({ type: 'GET_DEBUG_LOG' }).catch(() => null);
+  const log = resp?.log || [];
+
+  debugCount.textContent = `${log.length} result${log.length !== 1 ? 's' : ''}`;
+
+  if (log.length === 0) {
+    debugLogEl.innerHTML = '<div class="debug-panel__empty">No results yet. Browse pages to populate.</div>';
+    return;
+  }
+
+  const VERDICT_CLASS = { definite: 'definite', likely: 'likely', possible: 'possible', unlikely: 'clean', clean: 'clean' };
+
+  debugLogEl.innerHTML = '';
+  for (const e of [...log].reverse()) {
+    const div = document.createElement('div');
+    div.className = `debug-entry debug-entry--${VERDICT_CLASS[e.verdict] || 'clean'}`;
+
+    const time    = new Date(e.ts).toLocaleTimeString();
+    const timing  = Object.entries(e.timing).map(([k, v]) => `${k}:${v}ms`).join(' ');
+    const signals = e.signals.map(s =>
+      `<div class="debug-entry__signal"><span class="debug-entry__sig-type">${escapeHtml(s.type)}</span> ${escapeHtml(s.label)} <span class="debug-entry__sig-weight">${(s.weight * 100).toFixed(1)}%</span></div>`
+    ).join('');
+
+    div.innerHTML = `
+      <div class="debug-entry__header">
+        <span class="debug-entry__verdict debug-entry__verdict--${VERDICT_CLASS[e.verdict] || 'clean'}">${e.verdict.toUpperCase()}</span>
+        <span class="debug-entry__score">${e.score?.toFixed(3)}</span>
+        <span class="debug-entry__time">${time}</span>
+      </div>
+      <div class="debug-entry__url" title="${escapeAttr(e.url)}">${escapeHtml(e.url)}</div>
+      <div class="debug-entry__timing">${escapeHtml(timing)}</div>
+      ${signals}
+      ${e.error ? `<div class="debug-entry__error">⚠ ${escapeHtml(e.error)}</div>` : ''}
+    `;
+    debugLogEl.appendChild(div);
+  }
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────

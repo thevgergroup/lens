@@ -40,6 +40,20 @@
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'SETTINGS_UPDATED') applySettings(message.settings);
     if (message.type === 'ANALYSIS_RESULT')  handleResult(message.url, message.result);
+    if (message.type === 'REANALYZE') {
+      // Clear processed set and remove all badges so images get re-analyzed from scratch
+      document.querySelectorAll('img[data-lens-level]').forEach(img => {
+        img.removeAttribute('data-lens-level');
+        img.removeAttribute('data-lens-confidence');
+        processedImages.delete(img);
+        const wrapper = img.closest('.lens-wrapper');
+        if (wrapper) wrapper.querySelector('.lens-badge')?.remove();
+      });
+      // Re-queue all visible images
+      document.querySelectorAll('img').forEach(img => {
+        if (shouldAnalyze(img)) queueImage(img);
+      });
+    }
   });
 
   function applySettings(newSettings) {

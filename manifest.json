@@ -46,7 +46,7 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["icons/*", "lib/*"],
+      "resources": ["icons/*", "lib/*", "lib/tfjs/*", "lib/mobilenet-tfjs/*", "lib/forensic-tfjs/*"],
       "matches": ["<all_urls>"]
     }
   ],
