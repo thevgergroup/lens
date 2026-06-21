@@ -20,9 +20,9 @@ const OUT_DIR = resolve(ROOT, 'lib/tfjs');
 
 mkdirSync(OUT_DIR, { recursive: true });
 
-// Bundle entry: re-export only what the service worker uses
+// Bundle entry: CPU backend for SW (WASM requires URL.createObjectURL, unavailable in MV3 SW)
 const entry = `
-export { setWasmPaths } from '@tensorflow/tfjs-backend-wasm';
+import '@tensorflow/tfjs-backend-cpu';
 export { loadGraphModel } from '@tensorflow/tfjs-converter';
 export { tensor4d, tidy, setBackend, ready } from '@tensorflow/tfjs-core';
 `;

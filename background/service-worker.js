@@ -14,7 +14,6 @@ import {
 } from '../lib/detector.js';
 
 import {
-  setWasmPaths,
   loadGraphModel,
   tensor4d,
   tidy,
@@ -40,9 +39,9 @@ let tfBackendReady = null;
 async function ensureTFBackend() {
   if (tfBackendReady) return tfBackendReady;
   tfBackendReady = (async () => {
-    const wasmBase = chrome.runtime.getURL('lib/tfjs/');
-    setWasmPaths(wasmBase);
-    await setBackend('wasm');
+    // MV3 service workers lack URL.createObjectURL, so WASM backend is unavailable.
+    // CPU backend (pure JS) works in SW context without DOM APIs.
+    await setBackend('cpu');
     await ready();
   })();
   return tfBackendReady;
@@ -176,7 +175,9 @@ const debugLog = [];
 const MAX_DEBUG_LOG = 200;
 
 // Feature flags — toggled via settings, persisted in chrome.storage.sync
-let featureFlags = { disableL5: false };
+// disableL5: true by default — MobileNet v1.2 has calibration issues causing
+// high FPR on real photos. Enable experimentally via Settings → Debug tab.
+let featureFlags = { disableL5: true };
 chrome.storage.sync.get('lensFlags', d => { if (d.lensFlags) featureFlags = { ...featureFlags, ...d.lensFlags }; });
 
 // Per-tab URL tracking for badge counts: tabId → Set<url>
@@ -186,6 +187,24 @@ const tabUrls = new Map();
 const analysisQueue = new Map(); // url → Promise
 const MAX_CONCURRENT = 4;
 let activeCount = 0;
+
+// Global SW keepalive — prevents suspension between sequential analyses.
+// Fires every 10s; cleared 5s after the last analysis completes.
+let globalKeepalive = null;
+let keepaliveExpiry = null;
+
+function touchKeepalive() {
+  keepaliveExpiry = Date.now() + 5000;
+  if (globalKeepalive) return;
+  globalKeepalive = setInterval(() => {
+    if (Date.now() > keepaliveExpiry) {
+      clearInterval(globalKeepalive);
+      globalKeepalive = null;
+    } else {
+      chrome.runtime.getPlatformInfo(() => {});
+    }
+  }, 10000);
+}
 
 // ---------------------------------------------------------------------------
 // Message handler (from content scripts)
@@ -231,6 +250,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const tabId = sender?.tab?.id;
 
+    // Keep SW alive during and between sequential analyses
+    touchKeepalive();
+
     // Check cache for immediate inline response
     if (resultCache.has(url)) {
       console.log(`[Lens SW] Cache hit: ${shortUrl}`);
@@ -240,9 +262,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return false;
     }
 
-    // Use event.waitUntil pattern via a port keepalive to prevent SW termination
-    // during async fetch+decode (MV3 SW can be suspended mid-flight otherwise)
-    const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000);
+    // Per-analysis keepalive as belt-and-suspenders during async fetch+decode
+    const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 10000);
 
     analyzeImage(url, domSignals || {})
       .then(result => {
@@ -253,7 +274,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           updateTabBadge(tabId);
           chrome.tabs.sendMessage(tabId, { type: 'ANALYSIS_RESULT', url, result }).catch(() => {});
         }
-        // Send via response channel (Chrome) AND push to tab (Firefox fallback)
+        touchKeepalive(); // reset idle window before clearing per-analysis keepalive
         try { sendResponse({ result, fromCache: false }); } catch (_) {}
       })
       .catch(err => {
@@ -457,7 +478,9 @@ async function analyzeImage(url, domSignals) {
   }
 
   // ── LAYER 5: MobileNetV3 neural classifier ──────────────────────────────
-  // Only run on images large enough to be meaningful (avoids tiny icons)
+  // L5 MobileNet: disabled by default — MobileNet v1.2 has calibration issues
+  // that cause high false-positive rates on real photos (Picsum, stock photos).
+  // Enable via featureFlags.disableL5 = false in settings for experimental use.
   if (!featureFlags.disableL5 && imageData.width >= 64 && imageData.height >= 64) {
     const t5 = Date.now();
     try {
@@ -640,16 +663,21 @@ async function fetchImageBytes(url) {
 // ---------------------------------------------------------------------------
 
 async function decodeImageToData(arrayBuffer) {
+  const MAX_DIM = 512;
+
   // Use ImageDecoder API if available (Chrome 94+, Safari 16+)
   if (typeof ImageDecoder !== 'undefined') {
     try {
       const blob = new Blob([arrayBuffer]);
       const decoder = new ImageDecoder({ data: blob.stream(), type: sniffMimeType(arrayBuffer) });
       const { image } = await decoder.decode();
-      const canvas = new OffscreenCanvas(image.displayWidth, image.displayHeight);
+      const scale = Math.min(1, MAX_DIM / Math.max(image.displayWidth, image.displayHeight));
+      const w = Math.floor(image.displayWidth * scale);
+      const h = Math.floor(image.displayHeight * scale);
+      const canvas = new OffscreenCanvas(w, h);
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(image, 0, 0);
-      return ctx.getImageData(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, w, h);
+      return ctx.getImageData(0, 0, w, h);
     } catch (_) {}
   }
 
@@ -657,9 +685,7 @@ async function decodeImageToData(arrayBuffer) {
   const blob = new Blob([arrayBuffer]);
   const bitmap = await createImageBitmap(blob);
 
-  // Cap size to avoid OOM
-  const maxDim = 1024;
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
   const w = Math.floor(bitmap.width * scale);
   const h = Math.floor(bitmap.height * scale);
 
