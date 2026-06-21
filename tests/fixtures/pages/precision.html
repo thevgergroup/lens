@@ -10,6 +10,9 @@
     #status { font-size: 11px; color: #718096; margin-bottom: 12px; }
     #progress-bar { height: 3px; background: #2d3748; margin-bottom: 12px; border-radius: 2px; }
     #progress-fill { height: 3px; background: #90cdf4; width: 0; border-radius: 2px; transition: width 0.3s; }
+    #mode-badge { display:inline-block; font-size:10px; padding:2px 8px; border-radius:3px; margin-left:8px; vertical-align:middle; }
+    #mode-badge.sw    { background:rgba(144,205,244,0.15); color:#90cdf4; }
+    #mode-badge.local { background:rgba(246,224,94,0.15);  color:#f6e05e; }
 
     #scorecard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
     .metric-box { background: #1a1d23; border: 1px solid #2d3748; padding: 10px 14px; border-radius: 4px; }
@@ -30,10 +33,14 @@
 
     h2 { font-size: 11px; color: #718096; margin: 20px 0 4px; border-top: 1px solid #2d3748; padding-top: 10px; }
     .section-summary { font-size: 11px; color: #a0aec0; margin-bottom: 6px; }
+
+    /* Image pool — fixed position so images have real rendered size for shouldAnalyze() */
+    #img-pool { position: fixed; top: 0; left: 0; width: 200px; opacity: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+    #img-pool img { display: block; width: 200px; height: 200px; object-fit: cover; }
   </style>
 </head>
 <body>
-  <h1>LENS Precision Scorecard — direct detector</h1>
+  <h1>LENS Precision Scorecard <span id="mode-badge" class="local">detecting…</span></h1>
   <div id="status">Initialising…</div>
   <div id="progress-bar"><div id="progress-fill"></div></div>
 
@@ -60,7 +67,7 @@
     </div>
   </div>
 
-  <div style="font-size:10px;color:#4a5568;margin:-8px 0 6px;letter-spacing:0.04em;text-transform:uppercase;">Non-CDN only — Other AI + training (36) vs General real + training (84, excl. X/Twitter CDN) — pixel/metadata signals only</div>
+  <div style="font-size:10px;color:#4a5568;margin:-8px 0 6px;letter-spacing:0.04em;text-transform:uppercase;">Non-CDN — Other AI + training vs General real + training</div>
   <div id="scorecard2" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
     <div class="metric-box">
       <div class="label">Recall (non-CDN)</div>
@@ -68,7 +75,7 @@
       <div class="sub" id="m2-recall-sub">AI detected</div>
     </div>
     <div class="metric-box">
-      <div class="label">FPR</div>
+      <div class="label">FPR (non-CDN)</div>
       <div class="value neutral" id="m2-fpr">—</div>
       <div class="sub" id="m2-fpr-sub">real flagged</div>
     </div>
@@ -86,6 +93,10 @@
 
   <div id="results"></div>
 
+  <!-- Off-screen pool: images injected here get picked up by the LENS content script -->
+  <div id="img-pool"></div>
+
+  <!-- Canvas for local L1-L4 fallback -->
   <canvas id="canvas" style="display:none"></canvas>
 
   <script type="module">
@@ -99,6 +110,7 @@
 
     const FLAGGED = new Set(['definite', 'likely', 'possible']);
 
+    // ── Image lists ───────────────────────────────────────────────────────────
     const BASE = '/tests/fixtures/images';
     const AI_GROK = Array.from({length: 48}, (_, i) =>
       `${BASE}/ai/grok/grok-${String(i+1).padStart(3,'0')}.jpg`
@@ -156,26 +168,16 @@
       `${BASE}/real/picsum-scene-200.jpg`,
       `${BASE}/real/waterfall.jpg`,
     ];
-
     const T = `${BASE}/ai/training`;
     const AI_TRAINING = [
-      `${T}/flux-dev-grid.jpg`,
-      `${T}/flux-robot.webp`,
-      `${T}/flux-schnell-grid.jpg`,
-      `${T}/mj-astronaut-mars.png`,
-      `${T}/mj-greenwood-city.jpg`,
-      `${T}/sd1-img2img-mountains.png`,
-      `${T}/sd1-txt2img-000.png`,
-      `${T}/sd1-txt2img-001.png`,
-      `${T}/sd1-txt2img-002.png`,
-      `${T}/sdxl-000.jpg`,
-      `${T}/sdxl-test-image.png`,
-      `${T}/sdxl-turbo-tile.png`,
-      `${T}/wiki-dalle-robot-letter.png`,
-      `${T}/wiki-ideogram-universe.webp`,
+      `${T}/flux-dev-grid.jpg`, `${T}/flux-robot.webp`, `${T}/flux-schnell-grid.jpg`,
+      `${T}/mj-astronaut-mars.png`, `${T}/mj-greenwood-city.jpg`,
+      `${T}/sd1-img2img-mountains.png`, `${T}/sd1-txt2img-000.png`,
+      `${T}/sd1-txt2img-001.png`, `${T}/sd1-txt2img-002.png`,
+      `${T}/sdxl-000.jpg`, `${T}/sdxl-test-image.png`, `${T}/sdxl-turbo-tile.png`,
+      `${T}/wiki-dalle-robot-letter.png`, `${T}/wiki-ideogram-universe.webp`,
       `${T}/wiki-sd-cyberpunk-city.webp`,
     ];
-
     const R = `${BASE}/real/training`;
     const REAL_TRAINING = [
       `${R}/picsum-014.jpg`,`${R}/picsum-015.jpg`,`${R}/picsum-016.jpg`,`${R}/picsum-017.jpg`,
@@ -204,181 +206,209 @@
       { list: REAL_OTHER,   isAI: false, cdnOnly: false, label: 'Real photographs — general' },
       { list: REAL_TRAINING,isAI: false, cdnOnly: false, label: 'Real training set (Picsum + Wikimedia)' },
     ];
+    const ALL_SRCS = ALL.flatMap(g => g.list);
+    const TOTAL = ALL_SRCS.length;
 
-    const TOTAL = ALL.reduce((s, g) => s + g.list.length, 0);
+    // ── Image pool: inject <img> tags so the LENS content script processes them ─
+    // Content scripts run in an isolated world; we communicate via the shared DOM.
+    // The content script's MutationObserver picks up new <img> nodes, sends them
+    // to the SW, and writes data-lens-level/data-lens-confidence back to the DOM.
+    const pool = document.getElementById('img-pool');
+    const imgMap = new Map(); // absUrl → <img>
+
+    function injectImages() {
+      for (const src of ALL_SRCS) {
+        const absUrl = new URL(src, location.href).href;
+        if (imgMap.has(absUrl)) continue;
+        const img = document.createElement('img');
+        img.src = absUrl;
+        img.width = 200;
+        img.height = 200;
+        pool.appendChild(img);
+        imgMap.set(absUrl, img);
+      }
+    }
+
+    function getSwResult(src) {
+      const absUrl = new URL(src, location.href).href;
+      const img = imgMap.get(absUrl);
+      if (!img) return null;
+      const level = img.getAttribute('data-lens-level');
+      const confidence = img.getAttribute('data-lens-confidence');
+      const label = img.getAttribute('data-lens-label');
+      if (!level) return null;
+      return { level, score: Number(confidence) / 100, label, signals: [] };
+    }
+
+    // ── Local fallback: L1–L4 ─────────────────────────────────────────────────
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-    // Decode image → ImageData via canvas
-    async function decodeImage(src) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      await new Promise((res, rej) => {
-        img.onload = res;
-        img.onerror = rej;
-        img.src = src;
-      });
-      const W = Math.min(img.naturalWidth,  512);
-      const H = Math.min(img.naturalHeight, 512);
-      canvas.width = W; canvas.height = H;
-      ctx.clearRect(0, 0, W, H);
-      ctx.drawImage(img, 0, 0, W, H);
-      return ctx.getImageData(0, 0, W, H);
-    }
-
-    async function analyzeOne(src) {
+    async function analyzeLocal(src) {
       const isLossy = /\.(jpe?g|webp)$/i.test(src);
       const absUrl = new URL(src, location.href).href;
-
-      // L1
       const l1 = checkUrlHeuristics(absUrl);
-
-      // L2
       let l2 = { score: 0, signals: [] };
+      try { const buf = await fetch(src).then(r => r.arrayBuffer()); l2 = await parseMetadata(buf); } catch {}
+      let l3 = { score: 0, signals: [] }, l4 = { score: 0, signals: [] };
       try {
-        const buf = await fetch(src).then(r => r.arrayBuffer());
-        l2 = await parseMetadata(buf);
-      } catch {}
-
-      // L3 + L4
-      let l3 = { score: 0, signals: [] };
-      let l4 = { score: 0, signals: [] };
-      try {
-        const imageData = await decodeImage(src);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = src; });
+        const W = Math.min(img.naturalWidth, 512), H = Math.min(img.naturalHeight, 512);
+        canvas.width = W; canvas.height = H;
+        ctx.clearRect(0, 0, W, H);
+        ctx.drawImage(img, 0, 0, W, H);
+        const imageData = ctx.getImageData(0, 0, W, H);
         l3 = analyzePixelStatistics(imageData, isLossy);
         l4 = analyzeFrequencyDomain(imageData);
       } catch {}
-
       const allSignals = [...l1.signals, ...l2.signals, ...l3.signals, ...l4.signals];
       const score = Math.max(l1.score, l2.score, l3.score, l4.score);
       const interp = interpretScore(score, allSignals);
-      return { score, level: interp.level, label: interp.label, signals: allSignals };
+      return { level: interp.level, score, label: interp.label, signals: allSignals };
     }
 
-    // Scoring state — all images
+    // ── Detect extension and inject images ────────────────────────────────────
+    // Inject first so the content script's MutationObserver sees them immediately.
+    injectImages();
+
+    const hasSW = await new Promise(resolve => {
+      // Watch for any img in pool to get data-lens-level written by content script
+      const observer = new MutationObserver(() => {
+        if (document.querySelector('#img-pool img[data-lens-level]')) {
+          observer.disconnect();
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      });
+      observer.observe(pool, { attributes: true, subtree: true, attributeFilter: ['data-lens-level'] });
+      const timeout = setTimeout(() => { observer.disconnect(); resolve(false); }, 10000);
+    });
+
+    const modeBadge = document.getElementById('mode-badge');
+    if (hasSW) {
+      modeBadge.textContent = 'Full pipeline L1–L6 via LENS extension';
+      modeBadge.className = 'sw';
+    } else {
+      modeBadge.textContent = 'L1–L4 local only (extension not detected)';
+      modeBadge.className = 'local';
+    }
+
+    // ── Scoring state ─────────────────────────────────────────────────────────
     let tp = 0, fp = 0, fn = 0, tn = 0, done = 0;
-    // Scoring state — Grok images excluded from both AI and real sides
     let tp2 = 0, fp2 = 0, fn2 = 0, tn2 = 0;
 
-    function pct(v) { return (v * 100).toFixed(0) + '%'; }
-    function cls(v) { return v >= 0.8 ? 'good' : v >= 0.55 ? 'warn' : 'bad'; }
+    function pct(v)   { return (v * 100).toFixed(0) + '%'; }
+    function cls(v)   { return v >= 0.8 ? 'good' : v >= 0.55 ? 'warn' : 'bad'; }
     function fpcls(v) { return v <= 0.15 ? 'good' : v <= 0.35 ? 'warn' : 'bad'; }
 
     function updateScorecard() {
-      const recall = (tp + fn) > 0 ? tp / (tp + fn) : 0;
-      const fpr    = (fp + tn) > 0 ? fp / (fp + tn) : 0;
-      const prec   = (tp + fp) > 0 ? tp / (tp + fp) : 1;
-      const f1     = (prec + recall) > 0 ? 2 * prec * recall / (prec + recall) : 0;
-
-      const recall2 = (tp2 + fn2) > 0 ? tp2 / (tp2 + fn2) : 0;
-      const fpr2    = (fp2 + tn2) > 0 ? fp2 / (fp2 + tn2) : 0;
-      const prec2   = (tp2 + fp2) > 0 ? tp2 / (tp2 + fp2) : 1;
-      const f12     = (prec2 + recall2) > 0 ? 2 * prec2 * recall2 / (prec2 + recall2) : 0;
-
-      const set = (id, val, c, sub) => {
-        document.getElementById(id).textContent = val;
-        document.getElementById(id).className = `value ${c}`;
-        if (sub) document.getElementById(id + '-sub').textContent = sub;
+      const recall = (tp+fn)>0 ? tp/(tp+fn) : 0, fpr = (fp+tn)>0 ? fp/(fp+tn) : 0;
+      const prec   = (tp+fp)>0 ? tp/(tp+fp) : 1, f1  = (prec+recall)>0 ? 2*prec*recall/(prec+recall) : 0;
+      const recall2=(tp2+fn2)>0?tp2/(tp2+fn2):0, fpr2=(fp2+tn2)>0?fp2/(fp2+tn2):0;
+      const prec2  =(tp2+fp2)>0?tp2/(tp2+fp2):1, f12 =(prec2+recall2)>0?2*prec2*recall2/(prec2+recall2):0;
+      const set=(id,val,c,sub)=>{
+        document.getElementById(id).textContent=val;
+        document.getElementById(id).className=`value ${c}`;
+        if(sub) document.getElementById(id+'-sub').textContent=sub;
       };
-      set('m-recall', pct(recall), cls(recall),   `${tp} / ${tp+fn} AI`);
-      set('m-fpr',    pct(fpr),    fpcls(fpr),    `${fp} / ${fp+tn} real`);
-      set('m-prec',   pct(prec),   cls(prec),     `${tp} TP, ${fp} FP`);
-      set('m-f1',     pct(f1),     cls(f1),       null);
-      set('m2-recall', pct(recall2), cls(recall2), `${tp2} / ${tp2+fn2} non-Grok AI`);
-      set('m2-fpr',    pct(fpr2),    fpcls(fpr2),  `${fp2} / ${fp2+tn2} real`);
-      set('m2-prec',   pct(prec2),   cls(prec2),   `${tp2} TP, ${fp2} FP`);
-      set('m2-f1',     pct(f12),     cls(f12),     null);
-      document.getElementById('progress-fill').style.width = `${(done/TOTAL)*100}%`;
-      document.getElementById('status').textContent =
-        `${done} / ${TOTAL} processed`;
+      set('m-recall', pct(recall),  cls(recall),   `${tp} / ${tp+fn} AI`);
+      set('m-fpr',    pct(fpr),     fpcls(fpr),    `${fp} / ${fp+tn} real`);
+      set('m-prec',   pct(prec),    cls(prec),     `${tp} TP, ${fp} FP`);
+      set('m-f1',     pct(f1),      cls(f1),       null);
+      set('m2-recall',pct(recall2), cls(recall2),  `${tp2} / ${tp2+fn2} non-CDN AI`);
+      set('m2-fpr',   pct(fpr2),    fpcls(fpr2),   `${fp2} / ${fp2+tn2} real`);
+      set('m2-prec',  pct(prec2),   cls(prec2),    `${tp2} TP, ${fp2} FP`);
+      set('m2-f1',    pct(f12),     cls(f12),      null);
+      document.getElementById('progress-fill').style.width=`${(done/TOTAL)*100}%`;
+      document.getElementById('status').textContent=`${done} / ${TOTAL} processed`;
     }
 
-    // Render a section with a table that fills in as results arrive
     function makeSection(group) {
-      const div = document.createElement('div');
-      const h2  = document.createElement('h2');
-      h2.textContent = group.label;
-      div.appendChild(h2);
-
-      const summary = document.createElement('div');
-      summary.className = 'section-summary';
-      summary.textContent = 'Running…';
-      div.appendChild(summary);
-
-      const table = document.createElement('table');
-      table.innerHTML = `<thead><tr>
-        <th>Image</th><th>Level</th><th>Score</th><th>Signals</th>
-      </tr></thead>`;
-      const tbody = document.createElement('tbody');
-      table.appendChild(tbody);
-      div.appendChild(table);
+      const div=document.createElement('div');
+      const h2=document.createElement('h2');
+      h2.textContent=group.label; div.appendChild(h2);
+      const summary=document.createElement('div');
+      summary.className='section-summary'; summary.textContent='Running…'; div.appendChild(summary);
+      const table=document.createElement('table');
+      table.innerHTML=`<thead><tr><th>Image</th><th>Level</th><th>Score</th><th>Signals</th></tr></thead>`;
+      const tbody=document.createElement('tbody');
+      table.appendChild(tbody); div.appendChild(table);
       document.getElementById('results').appendChild(div);
-
-      let secTP = 0, secFP = 0, secTotal = 0;
-
+      let secTP=0,secFP=0,secTotal=0;
       return {
-        addRow(src, result) {
-          const name = src.split('/').pop();
-          const flagged = FLAGGED.has(result.level);
+        addRow(src,result) {
+          const name=src.split('/').pop();
+          const {level,score,signals=[]}=result;
+          const flagged=FLAGGED.has(level);
           secTotal++;
-          if (group.isAI && flagged)  secTP++;
-          if (!group.isAI && flagged) secFP++;
-
-          const correct = group.isAI ? flagged : !flagged;
-          const rowCls  = group.isAI
-            ? (flagged ? 'ok' : 'miss')
-            : (flagged ? 'fp' : 'tn');
-          const tag = group.isAI
-            ? (flagged ? '✓' : '✗')
-            : (flagged ? 'FP' : '✓');
-
-          const sigLabels = result.signals.map(s => s.label).join(' | ');
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="name ${rowCls}">${tag} ${name}</td>
-            <td class="level">${result.level}</td>
-            <td class="score">${result.score.toFixed(2)}</td>
-            <td class="signals">${sigLabels}</td>`;
+          if(group.isAI&&flagged) secTP++;
+          if(!group.isAI&&flagged) secFP++;
+          const rowCls=group.isAI?(flagged?'ok':'miss'):(flagged?'fp':'tn');
+          const tag=group.isAI?(flagged?'✓':'✗'):(flagged?'FP':'✓');
+          const sigLabels=signals.map(s=>s.label).join(' | ');
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td class="name ${rowCls}">${tag} ${name}</td><td class="level">${level}</td><td class="score">${Number(score).toFixed(2)}</td><td class="signals">${sigLabels}</td>`;
           tbody.appendChild(tr);
-
-          if (!group.isAI && flagged) {
-            console.warn(`FP [${group.label}] ${name} score=${result.score.toFixed(2)} level=${result.level}`);
-            for (const s of result.signals) {
-              console.warn(`  signal: [${s.type}] weight=${s.weight} — ${s.label}`);
-            }
+          if(!group.isAI&&flagged) {
+            console.warn(`FP [${group.label}] ${name} score=${Number(score).toFixed(2)} level=${level}`);
+            for(const s of signals) console.warn(`  [${s.type}] ${s.label} weight=${s.weight}`);
           }
-
-          if (group.isAI) {
-            summary.textContent = `${secTP} / ${secTotal} detected`;
-          } else {
-            summary.textContent = `${secFP} / ${secTotal} false positives`;
-          }
+          summary.textContent=group.isAI?`${secTP}/${secTotal} detected`:`${secFP}/${secTotal} false positives`;
         }
       };
     }
 
-    // Run all groups sequentially (each image one at a time to avoid canvas races)
-    for (const group of ALL) {
-      const section = makeSection(group);
-      for (const src of group.list) {
-        document.getElementById('status').textContent = `Analysing ${src.split('/').pop()}… (${done+1}/${TOTAL})`;
-        let result;
-        try {
-          result = await analyzeOne(src);
-        } catch(e) {
-          result = { score: 0, level: 'error', label: 'Error', signals: [{ label: e.message }] };
+    // ── Run ───────────────────────────────────────────────────────────────────
+    if (hasSW) {
+      document.getElementById('status').textContent = 'Waiting for LENS extension to analyse images…';
+
+      // Wait for each image to get a result (data-lens-level set by content script)
+      for (const group of ALL) {
+        const section = makeSection(group);
+        for (const src of group.list) {
+          const absUrl = new URL(src, location.href).href;
+          // Poll until result arrives (max 60s per image)
+          const result = await new Promise(resolve => {
+            let ticks = 0;
+            const iv = setInterval(() => {
+              const r = getSwResult(src);
+              if (r || ++ticks > 600) {
+                clearInterval(iv);
+                resolve(r || { level: 'clean', score: 0, label: 'timeout', signals: [] });
+              }
+            }, 100);
+          });
+          const flagged = FLAGGED.has(result.level);
+          if (group.isAI) {
+            flagged ? tp++ : fn++;
+            if (!group.cdnOnly) { flagged ? tp2++ : fn2++; }
+          } else {
+            flagged ? fp++ : tn++;
+            if (!group.cdnOnly) { flagged ? fp2++ : tn2++; }
+          }
+          done++;
+          section.addRow(src, result);
+          updateScorecard();
         }
-        const flagged = FLAGGED.has(result.level);
-        if (group.isAI) {
-          flagged ? tp++ : fn++;
-          if (!group.cdnOnly) { flagged ? tp2++ : fn2++; }
-        } else {
-          flagged ? fp++ : tn++;
-          if (!group.cdnOnly) { flagged ? fp2++ : tn2++; }
+      }
+    } else {
+      // Local L1-L4 fallback
+      for (const group of ALL) {
+        const section = makeSection(group);
+        for (const src of group.list) {
+          document.getElementById('status').textContent=`Analysing ${src.split('/').pop()}… (${done+1}/${TOTAL})`;
+          let result;
+          try { result = await analyzeLocal(src); }
+          catch(e) { result = { level:'clean', score:0, label:'Error', signals:[{label:e.message,type:'error',weight:0}] }; }
+          const flagged=FLAGGED.has(result.level);
+          if(group.isAI){ flagged?tp++:fn++; if(!group.cdnOnly){flagged?tp2++:fn2++;} }
+          else          { flagged?fp++:tn++; if(!group.cdnOnly){flagged?fp2++:tn2++;} }
+          done++;
+          section.addRow(src,result);
+          updateScorecard();
         }
-        done++;
-        section.addRow(src, result);
-        updateScorecard();
       }
     }
 
