@@ -216,28 +216,38 @@
     const pool = document.getElementById('img-pool');
     const imgMap = new Map(); // absUrl → <img>
 
-    function injectImages() {
-      for (const src of ALL_SRCS) {
+    // Inject one image and wait for data-lens-level to appear (written by content script).
+    // One-at-a-time keeps the SW alive — flooding 186 messages causes it to be suspended
+    // mid-queue by Chrome's MV3 idle timer between bursts.
+    function injectAndWait(src, timeoutMs = 45000) {
+      return new Promise(resolve => {
         const absUrl = new URL(src, location.href).href;
-        if (imgMap.has(absUrl)) continue;
         const img = document.createElement('img');
         img.src = absUrl;
         img.width = 200;
         img.height = 200;
         pool.appendChild(img);
         imgMap.set(absUrl, img);
-      }
-    }
 
-    function getSwResult(src) {
-      const absUrl = new URL(src, location.href).href;
-      const img = imgMap.get(absUrl);
-      if (!img) return null;
-      const level = img.getAttribute('data-lens-level');
-      const confidence = img.getAttribute('data-lens-confidence');
-      const label = img.getAttribute('data-lens-label');
-      if (!level) return null;
-      return { level, score: Number(confidence) / 100, label, signals: [] };
+        const observer = new MutationObserver(() => {
+          if (img.hasAttribute('data-lens-level')) {
+            observer.disconnect();
+            clearTimeout(timer);
+            resolve({
+              level:      img.getAttribute('data-lens-level'),
+              score:      Number(img.getAttribute('data-lens-confidence')) / 100,
+              label:      img.getAttribute('data-lens-label') || '',
+              signals:    [],
+            });
+          }
+        });
+        observer.observe(img, { attributes: true, attributeFilter: ['data-lens-level'] });
+
+        const timer = setTimeout(() => {
+          observer.disconnect();
+          resolve({ level: 'clean', score: 0, label: 'timeout', signals: [] });
+        }, timeoutMs);
+      });
     }
 
     // ── Local fallback: L1–L4 ─────────────────────────────────────────────────
@@ -269,22 +279,10 @@
       return { level: interp.level, score, label: interp.label, signals: allSignals };
     }
 
-    // ── Detect extension and inject images ────────────────────────────────────
-    // Inject first so the content script's MutationObserver sees them immediately.
-    injectImages();
-
-    const hasSW = await new Promise(resolve => {
-      // Watch for any img in pool to get data-lens-level written by content script
-      const observer = new MutationObserver(() => {
-        if (document.querySelector('#img-pool img[data-lens-level]')) {
-          observer.disconnect();
-          clearTimeout(timeout);
-          resolve(true);
-        }
-      });
-      observer.observe(pool, { attributes: true, subtree: true, attributeFilter: ['data-lens-level'] });
-      const timeout = setTimeout(() => { observer.disconnect(); resolve(false); }, 10000);
-    });
+    // ── Detect extension via probe image ─────────────────────────────────────
+    // Inject one probe image and wait up to 10s for data-lens-level to appear.
+    const probeResult = await injectAndWait(ALL_SRCS[0], 10000);
+    const hasSW = probeResult.label !== 'timeout';
 
     const modeBadge = document.getElementById('mode-badge');
     if (hasSW) {
@@ -362,24 +360,20 @@
 
     // ── Run ───────────────────────────────────────────────────────────────────
     if (hasSW) {
-      document.getElementById('status').textContent = 'Waiting for LENS extension to analyse images…';
+      // Record the probe result for the first image (already analyzed during detection)
+      const probeResults = new Map();
+      probeResults.set(new URL(ALL_SRCS[0], location.href).href, probeResult);
 
-      // Wait for each image to get a result (data-lens-level set by content script)
       for (const group of ALL) {
         const section = makeSection(group);
         for (const src of group.list) {
+          document.getElementById('status').textContent = `Analysing ${src.split('/').pop()}… (${done+1}/${TOTAL})`;
           const absUrl = new URL(src, location.href).href;
-          // Poll until result arrives (max 60s per image)
-          const result = await new Promise(resolve => {
-            let ticks = 0;
-            const iv = setInterval(() => {
-              const r = getSwResult(src);
-              if (r || ++ticks > 600) {
-                clearInterval(iv);
-                resolve(r || { level: 'clean', score: 0, label: 'timeout', signals: [] });
-              }
-            }, 100);
-          });
+
+          // First image was the probe — use its cached result
+          const result = probeResults.has(absUrl)
+            ? probeResults.get(absUrl)
+            : await injectAndWait(src);
           const flagged = FLAGGED.has(result.level);
           if (group.isAI) {
             flagged ? tp++ : fn++;
