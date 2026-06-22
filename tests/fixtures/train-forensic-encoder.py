@@ -133,12 +133,6 @@ def load_image(path, img_size, augment=False):
     try:
         img = Image.open(path).convert('RGB')
 
-        # JPEG compression augmentation — critical for CDN robustness
-        # Real-world images on LinkedIn/Twitter are re-encoded at q=75-85
-        if augment and random.random() > 0.4:
-            q = random.randint(75, 95)
-            img = jpeg_compress(img, q)
-
         # Resize keeping aspect ratio then center crop to img_size
         w, h = img.size
         scale = (img_size + 32) / min(w, h)  # resize so short side = img_size+32
@@ -249,7 +243,6 @@ def main():
     parser.add_argument('--no-wandb',    action='store_true')
     parser.add_argument('--run-name',    type=str,   default=None,
                         help='WandB run name. Auto-generated from data hash if omitted.')
-    parser.add_argument('--exclude-ai-dirs', nargs='*', default=[])
     args = parser.parse_args()
 
     if args.dry_run:
@@ -261,9 +254,17 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
 
-    ai_samples   = collect_images(FIXTURES / 'ai',   1,
-                                  exclude_prefix='cashbowman_',
-                                  exclude_dirs=set(args.exclude_ai_dirs))
+    # AI images come from the augmented dir (JPEG-augmented by augment-forensic stage).
+    # Real images come directly from source dirs (already camera/CDN JPEG).
+    augmented_dir = FIXTURES / 'ai' / 'augmented'
+    if not augmented_dir.exists() or not any(augmented_dir.iterdir()):
+        raise RuntimeError(
+            f"Augmented AI images not found at {augmented_dir}\n"
+            "Run: dvc repro augment-forensic"
+        )
+
+    ai_samples   = collect_images(augmented_dir, 1,
+                                  exclude_prefix='cashbowman_')
     real_samples = collect_images(FIXTURES / 'real', 0,
                                   exclude_prefix='cashbowman_',
                                   exclude_dirs=EXCLUDE_REAL_DIRS)
@@ -272,12 +273,17 @@ def main():
     def count_by_source(samples, base):
         counts = {}
         for path, _ in samples:
-            rel = Path(path).relative_to(base)
-            src = rel.parts[0] if len(rel.parts) > 1 else 'root'
+            p = Path(path)
+            rel = p.relative_to(base)
+            # Augmented AI files are named {source_dir}__{stem}.jpg — extract source
+            if '__' in p.stem:
+                src = p.stem.split('__')[0]
+            else:
+                src = rel.parts[0] if len(rel.parts) > 1 else 'root'
             counts[src] = counts.get(src, 0) + 1
         return counts
 
-    ai_by_source   = count_by_source(ai_samples,   FIXTURES / 'ai')
+    ai_by_source   = count_by_source(ai_samples,   augmented_dir)
     real_by_source = count_by_source(real_samples, FIXTURES / 'real')
     print('AI sources:',   ai_by_source)
     print('Real sources:', real_by_source)
@@ -324,8 +330,8 @@ def main():
                     'batch_size': args.batch,
                     'lr': args.lr,
                     'threshold': args.threshold,
-                    'jpeg_aug': True,
-                    'jpeg_quality_range': '75-95',
+                    'jpeg_aug': 'dataset-level',
+                    'jpeg_quality_range': '40-95',
                     'seed': args.seed,
                     'data_hash': data_hash,
                     'n_ai': len(ai_samples),

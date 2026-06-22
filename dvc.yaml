@@ -1,4 +1,27 @@
 stages:
+  augment-forensic:
+    cmd: >
+      .venv/bin/python3 tests/fixtures/augment-forensic.py
+      --jpeg-min ${augment.jpeg_quality_min}
+      --jpeg-max ${augment.jpeg_quality_max}
+      --seed ${augment.seed}
+    deps:
+      - tests/fixtures/augment-forensic.py
+      - tests/fixtures/images/ai/defactify
+      - tests/fixtures/images/ai/dalle3
+      - tests/fixtures/images/ai/midjourney
+      - tests/fixtures/images/ai/grok
+      - tests/fixtures/images/ai/kaggle
+      - tests/fixtures/images/ai/training
+    params:
+      - augment.jpeg_quality_min
+      - augment.jpeg_quality_max
+      - augment.seed
+    outs:
+      - tests/fixtures/images/ai/augmented:
+          cache: true
+          persist: false
+
   train-forensic:
     cmd: >
       .venv/bin/python3 tests/fixtures/train-forensic-encoder.py
@@ -10,12 +33,7 @@ stages:
       --threshold ${train.threshold}
     deps:
       - tests/fixtures/train-forensic-encoder.py
-      - tests/fixtures/images/ai/defactify
-      - tests/fixtures/images/ai/dalle3
-      - tests/fixtures/images/ai/midjourney
-      - tests/fixtures/images/ai/grok
-      - tests/fixtures/images/ai/kaggle
-      - tests/fixtures/images/ai/training
+      - tests/fixtures/images/ai/augmented
       - tests/fixtures/images/real/coco
       - tests/fixtures/images/real/sun397
       - tests/fixtures/images/real/twitter

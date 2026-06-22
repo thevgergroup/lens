@@ -85,3 +85,52 @@ stages:
       md5: b4efa14b6289c33dcefbc93813f93900.dir
       size: 152423
       nfiles: 2
+  augment-forensic:
+    cmd: ".venv/bin/python3 tests/fixtures/augment-forensic.py --jpeg-min 40 --jpeg-max
+      95 --seed 42\n"
+    deps:
+    - path: tests/fixtures/augment-forensic.py
+      hash: md5
+      md5: a2027319cc6025d29d673775ace92547
+      size: 4079
+    - path: tests/fixtures/images/ai/dalle3
+      hash: md5
+      md5: 408acc8cd6b968103c494e98d7395595.dir
+      size: 145526260
+      nfiles: 400
+    - path: tests/fixtures/images/ai/defactify
+      hash: md5
+      md5: 718ad03fb7c562082a7602251ba9e03c.dir
+      size: 207217735
+      nfiles: 1200
+    - path: tests/fixtures/images/ai/grok
+      hash: md5
+      md5: e37bf741351bbf0079e2132d3251508e.dir
+      size: 41176479
+      nfiles: 311
+    - path: tests/fixtures/images/ai/kaggle
+      hash: md5
+      md5: aa1cf14fe7f0ca2633b0825cd8673461.dir
+      size: 289062409
+      nfiles: 553
+    - path: tests/fixtures/images/ai/midjourney
+      hash: md5
+      md5: 8b7d7c8d54e7b1a64145f2a37625f416.dir
+      size: 97122682
+      nfiles: 400
+    - path: tests/fixtures/images/ai/training
+      hash: md5
+      md5: 38edaf67940fb8267c405b09b8003e25.dir
+      size: 17359562
+      nfiles: 15
+    params:
+      params.yaml:
+        augment.jpeg_quality_max: 95
+        augment.jpeg_quality_min: 40
+        augment.seed: 42
+    outs:
+    - path: tests/fixtures/images/ai/augmented
+      hash: md5
+      md5: eeb74195ea6261c7a931e4b378b216e9.dir
+      size: 404732731
+      nfiles: 2875
