@@ -254,8 +254,9 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
 
-    # AI images come from the augmented dir (JPEG-augmented by augment-forensic stage).
-    # Real images come directly from source dirs (already camera/CDN JPEG).
+    # AI images: original (lossless PNG/WebP) + JPEG-augmented versions.
+    # Including both teaches the model to detect AI signals regardless of
+    # compression level — critical for real-world robustness.
     augmented_dir = FIXTURES / 'ai' / 'augmented'
     if not augmented_dir.exists() or not any(augmented_dir.iterdir()):
         raise RuntimeError(
@@ -263,8 +264,21 @@ def main():
             "Run: dvc repro augment-forensic"
         )
 
-    ai_samples   = collect_images(augmented_dir, 1,
-                                  exclude_prefix='cashbowman_')
+    AI_SOURCE_DIRS = [
+        FIXTURES / 'ai' / 'defactify',
+        FIXTURES / 'ai' / 'dalle3',
+        FIXTURES / 'ai' / 'midjourney',
+        FIXTURES / 'ai' / 'grok',
+        FIXTURES / 'ai' / 'kaggle',
+        FIXTURES / 'ai' / 'training',
+    ]
+    ai_original = []
+    for d in AI_SOURCE_DIRS:
+        ai_original += collect_images(d, 1, exclude_prefix='cashbowman_')
+
+    ai_augmented = collect_images(augmented_dir, 1, exclude_prefix='cashbowman_')
+    ai_samples   = ai_original + ai_augmented
+
     real_samples = collect_images(FIXTURES / 'real', 0,
                                   exclude_prefix='cashbowman_',
                                   exclude_dirs=EXCLUDE_REAL_DIRS)
@@ -283,7 +297,7 @@ def main():
             counts[src] = counts.get(src, 0) + 1
         return counts
 
-    ai_by_source   = count_by_source(ai_samples,   augmented_dir)
+    ai_by_source   = count_by_source(ai_samples,   FIXTURES / 'ai')
     real_by_source = count_by_source(real_samples, FIXTURES / 'real')
     print('AI sources:',   ai_by_source)
     print('Real sources:', real_by_source)

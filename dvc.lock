@@ -4,6 +4,11 @@ stages:
     cmd: ".venv/bin/python3 tests/fixtures/train-forensic-encoder.py --epochs 15 --batch
       32 --lr 0.001 --seed 42 --img-size 224 --threshold 0.5\n"
     deps:
+    - path: tests/fixtures/images/ai/augmented
+      hash: md5
+      md5: eeb74195ea6261c7a931e4b378b216e9.dir
+      size: 404732731
+      nfiles: 2875
     - path: tests/fixtures/images/ai/dalle3
       hash: md5
       md5: 408acc8cd6b968103c494e98d7395595.dir
@@ -16,9 +21,9 @@ stages:
       nfiles: 1200
     - path: tests/fixtures/images/ai/grok
       hash: md5
-      md5: 69e5b3fcef2c38c553325afcf0b701d3.dir
-      size: 10476346
-      nfiles: 49
+      md5: e37bf741351bbf0079e2132d3251508e.dir
+      size: 41176479
+      nfiles: 311
     - path: tests/fixtures/images/ai/kaggle
       hash: md5
       md5: aa1cf14fe7f0ca2633b0825cd8673461.dir
@@ -61,8 +66,8 @@ stages:
       nfiles: 19
     - path: tests/fixtures/train-forensic-encoder.py
       hash: md5
-      md5: b32f0aafb63cda70271f6a193461c5ff
-      size: 19069
+      md5: 2642d6c1c318154bbce35b7cfa29f94e
+      size: 19737
     params:
       params.yaml:
         train.batch_size: 32
@@ -74,15 +79,15 @@ stages:
     outs:
     - path: lib/forensic-ai-detector.keras
       hash: md5
-      md5: f45f306c4f4fbdd5eb333e735bb0baa7
+      md5: 5a1576b30ce4f709f22e3fedb4c49844
       size: 934049
     - path: lib/forensic-metrics.json
       hash: md5
-      md5: 90b37cf3884060d1084e87f7a8123c67
-      size: 1459
+      md5: c0ecdad9bbaea68fed6bb06516dfdcca
+      size: 1479
     - path: lib/forensic-tfjs
       hash: md5
-      md5: b4efa14b6289c33dcefbc93813f93900.dir
+      md5: 41e836ae6042faa3bc7c2a2ccf1da037.dir
       size: 152423
       nfiles: 2
   augment-forensic:

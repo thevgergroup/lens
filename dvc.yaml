@@ -34,6 +34,12 @@ stages:
     deps:
       - tests/fixtures/train-forensic-encoder.py
       - tests/fixtures/images/ai/augmented
+      - tests/fixtures/images/ai/defactify
+      - tests/fixtures/images/ai/dalle3
+      - tests/fixtures/images/ai/midjourney
+      - tests/fixtures/images/ai/grok
+      - tests/fixtures/images/ai/kaggle
+      - tests/fixtures/images/ai/training
       - tests/fixtures/images/real/coco
       - tests/fixtures/images/real/sun397
       - tests/fixtures/images/real/twitter
