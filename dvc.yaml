@@ -1,0 +1,40 @@
+stages:
+  train-forensic:
+    cmd: >
+      .venv/bin/python3 tests/fixtures/train-forensic-encoder.py
+      --epochs ${train.epochs}
+      --batch ${train.batch_size}
+      --lr ${train.learning_rate}
+      --seed ${train.seed}
+      --img-size ${train.img_size}
+      --threshold ${train.threshold}
+    deps:
+      - tests/fixtures/train-forensic-encoder.py
+      - tests/fixtures/images/ai/defactify
+      - tests/fixtures/images/ai/dalle3
+      - tests/fixtures/images/ai/midjourney
+      - tests/fixtures/images/ai/grok
+      - tests/fixtures/images/ai/kaggle
+      - tests/fixtures/images/ai/training
+      - tests/fixtures/images/real/coco
+      - tests/fixtures/images/real/sun397
+      - tests/fixtures/images/real/twitter
+      - tests/fixtures/images/real/kaggle
+      - tests/fixtures/images/real/training
+    params:
+      - train.epochs
+      - train.batch_size
+      - train.learning_rate
+      - train.seed
+      - train.img_size
+      - train.threshold
+    outs:
+      - lib/forensic-ai-detector.keras:
+          cache: true
+          persist: false
+      - lib/forensic-tfjs:
+          cache: true
+          persist: false
+    metrics:
+      - lib/forensic-metrics.json:
+          cache: false

@@ -105,6 +105,52 @@ Served from `tests/fixtures/` at `http://localhost:3456`:
 ### Screenshots
 Integration tests save screenshots to `tests/integration/screenshots/` for visual review.
 
+## ML Model Training (L6 Forensic NPR Encoder)
+
+Training is managed by DVC — use `dvc repro` not `python3` directly. DVC checks whether any dep (script, data, `params.yaml`) changed and skips stages that are already cached.
+
+### Setup
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-train.txt
+dvc pull                         # fetch training images from S3 (~2GB)
+```
+
+### Train
+```bash
+dvc repro train-forensic         # run pipeline (skip if nothing changed)
+dvc repro train-forensic --force # force retrain
+dvc metrics show                 # print AUC, precision, recall from lib/forensic-metrics.json
+```
+
+### Experiment tracking
+```bash
+dvc exp run                                  # run with current params.yaml
+dvc exp run -S train.epochs=20               # override param without editing file
+dvc exp show                                 # compare all experiments side-by-side
+dvc exp diff                                 # diff metrics of last two experiments
+```
+
+### Pipeline definition
+- `dvc.yaml` — stage command, deps, params, outputs, metrics
+- `params.yaml` — hyperparameters read by the stage command
+- `lib/forensic-metrics.json` — DVC metrics file (AUC, threshold sweep, data_hash)
+
+### WandB / DVC naming convention
+Run names: `forensic-npr_{data-hash}_{epochs}e_{lr}lr_{seed}s`
+The `data-hash` is the MD5 of all `.dvc` pointer files — every wandb run and DVC experiment is traceable to the exact dataset snapshot that produced it.
+
+### Data
+All image dirs under `tests/fixtures/images/` are DVC-tracked (`*.dvc` pointer files). The S3 remote is `s3://lens-training-data/dvc` (AWS profile `vger`). To add a new source:
+```bash
+dvc add tests/fixtures/images/ai/<newsource>
+dvc push
+# then add the dir as a dep in dvc.yaml and dvc repro
+```
+
+### Python environment note
+The `.venv/` directory is gitignored. `tensorflow_decision_forests` is **not** installed — it has an irreconcilable protobuf conflict with TF 2.19. The training script mocks it out via `sys.modules` before the `tensorflowjs` import.
+
 ## UI & Styling
 
 ### Design Language

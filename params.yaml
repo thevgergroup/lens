@@ -1,0 +1,7 @@
+train:
+  epochs: 15
+  batch_size: 32
+  learning_rate: 0.001
+  seed: 42
+  img_size: 224
+  threshold: 0.50

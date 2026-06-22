@@ -83,6 +83,66 @@ See [CLAUDE.md](CLAUDE.md) for architecture details and how to add new detection
 
 ---
 
+## ML Model Training
+
+The L6 forensic NPR encoder is trained with [DVC](https://dvc.org), which tracks data versions, hyperparameters, and metrics reproducibly. Training images live in S3 (`s3://lens-training-data/dvc`) and are never committed to git. Model outputs (`lib/forensic-ai-detector.keras`, `lib/forensic-tfjs/`) are DVC-cached.
+
+### First-time setup
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-train.txt
+dvc pull                         # fetch all training data from S3 (~2GB)
+```
+
+### Run training
+
+```bash
+dvc repro train-forensic         # train; skips if deps/params unchanged
+dvc metrics show                 # print AUC, precision, recall, FPR
+```
+
+DVC checks whether any dependency (training script, image dirs, `params.yaml`) has changed since the last cached run. If nothing changed the stage is skipped. Use `--force` to retrain unconditionally.
+
+### Hyperparameter experiments
+
+```bash
+dvc exp run                                  # run with current params.yaml
+dvc exp run -S train.epochs=20               # override a single param inline
+dvc exp run -S train.lr=0.0005 -S train.epochs=25
+dvc exp show                                 # compare all runs side-by-side
+dvc exp diff                                 # diff last two experiments
+```
+
+### WandB run naming
+
+Runs are named `forensic-npr_{data-hash}_{epochs}e_{lr}lr_{seed}s` — e.g. `forensic-npr_55ff2159_15e_1e-3lr_42s`. The `data-hash` is the first 8 chars of the combined MD5 of all `.dvc` pointer files, so every wandb run and DVC experiment is traceable to an exact dataset snapshot.
+
+### Adding new training data
+
+```bash
+# Download new images to the right dir, then:
+dvc add tests/fixtures/images/ai/<source>
+dvc push
+dvc repro train-forensic         # DVC detects the new dep and retrains
+```
+
+### Training data sources
+
+| Source | Class | Count | Script |
+|--------|-------|-------|--------|
+| Defactify (SD 2.1 / SD3 / SDXL) | AI | 1200 | `download-defactify.py` |
+| DALL-E 3 (HuggingFace) | AI | 400 | `download-dalle3.py` |
+| Midjourney (HuggingFace) | AI | 400 | `download-midjourney.py` |
+| Grok / Aurora (X CDN) | AI | 48 | `download-grok.py` |
+| Kaggle (misc generators) | AI | 50 | `download-training-data.py` |
+| MS COCO | Real | 1000 | `download-training-data.py` |
+| SUN397 | Real | 1000 | `download-training-data.py` |
+| Kaggle (real photos) | Real | 745 | `download-training-data.py` |
+| Picsum + Wikimedia (curated) | Real | 84 | `download-real-photos.py` |
+
+---
+
 ## Contributing
 
 Issues and PRs welcome, especially:

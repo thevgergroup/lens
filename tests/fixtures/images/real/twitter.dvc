@@ -1,0 +1,6 @@
+outs:
+- md5: 4f3c202d949a7962082c0d6f57187d1d.dir
+  size: 16850841
+  nfiles: 19
+  hash: md5
+  path: twitter
