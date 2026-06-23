@@ -10,19 +10,17 @@ A browser extension that tells you whether an image was AI-generated, as you bro
 
 ## Install
 
-### Firefox
-[Download lens-1.1.0.xpi](https://thevgergroup.com/blog/lens-seeing-through-ai-generated-images/) — direct install, no store account needed.
-
 ### Chrome, Edge, Brave
-Our Chrome Web Store listing is under review. In the meantime:
+**[Install from the Chrome Web Store →](https://chromewebstore.google.com/detail/lens-%E2%80%94-ai-image-detector/aafcnnbnfpcdiogncmdkffiajnlbkanl)**
 
-1. Download and unzip [lens-1.1.0.zip](https://thevgergroup.com/blog/lens-seeing-through-ai-generated-images/) to a permanent folder
-2. Go to `chrome://extensions/` and enable **Developer mode**
-3. Click **Load unpacked** → select the unzipped folder
-4. You can turn Developer mode off again after installing
+### Firefox
+Download the latest `.xpi` from the [GitHub releases page](https://github.com/thevgergroup/lens/releases/latest) and open it in Firefox — you'll be prompted to install directly, no store account needed.
 
 ### Safari
 Requires Xcode packaging via `xcrun safari-web-extension-converter`. We're working on an App Store submission.
+
+### More install options
+See the [install guide on our blog](https://thevgergroup.com/blog/lens-seeing-through-ai-generated-images/#install) for step-by-step instructions and screenshots.
 
 ---
 
