@@ -2,7 +2,7 @@
 
 **Client-side AI image detection in a browser extension**
 
-*The Vger Group — March 2026*
+*The Vger Group — June 2026*
 
 Full write-up: [thevgergroup.com/blog/lens-seeing-through-ai-generated-images](https://thevgergroup.com/blog/lens-seeing-through-ai-generated-images/)
 
@@ -80,7 +80,7 @@ AI-generated images tend to have smoother gradients than photographs of the same
 **Inter-block noise correlation (Mallet et al. 2025)**
 This is the most discriminative pixel-domain signal. The algorithm:
 
-1. Apply a Laplacian filter to isolate the noise residual (subtracting low-frequency content)
+1. Compute an NPR (Noise Pattern Residual) by even-pixel downsampling: for each pixel, subtract the value of the nearest even-coordinate neighbour, scaled by 2/3. This isolates high-frequency residuals while avoiding Laplacian ringing artefacts.
 2. Divide the image into 8×8 pixel blocks
 3. Select the 30 blocks with the lowest noise variance (i.e. the "flattest" regions)
 4. Compute pairwise Pearson correlation between all selected block noise vectors
@@ -104,6 +104,48 @@ Natural images follow a 1/f power spectrum (more energy at low frequencies, fall
 
 This layer is specifically intended to detect Google SynthID watermarks, but may also catch other spread-spectrum approaches. Weight: **0.75–0.84**.
 
+### Layer 6 — Forensic NPR encoder (~50ms)
+
+v1.3 adds a convolutional neural network trained on NPR (Noise Pattern Residual) features extracted from a diverse set of AI-generated and real photographs. The model runs entirely in the browser's service worker via TensorFlow.js (CPU backend — WASM is unavailable in Manifest V3 service workers), with the model weights bundled as a few-MB asset.
+
+**Architecture**  
+The model is a lightweight CNN encoder trained on the same even-pixel NPR residual described in L3. The residual is computed server-side (in the service worker) on the decoded image, then fed to the network as a single-channel input. The network outputs a probability of AI generation.
+
+**Training data**  
+The model was trained on held-out images across seven AI generators and three real-photograph sources:
+
+| Generator | Train | Held-out test |
+|-----------|-------|---------------|
+| DALL·E 3 | 320 | 80 |
+| Stable Diffusion 2.1 | 320 | 80 |
+| Stable Diffusion 3 | 320 | 80 |
+| Stable Diffusion XL | 320 | 80 |
+| Grok Aurora | 248 | 62 |
+| Midjourney | 320 | 80 |
+| Kaggle (misc generators) | 443 | 110 |
+| MS COCO (real) | 800 | 200 |
+| SUN397 (real) | 800 | 200 |
+| Kaggle real photos | 927 | 231 |
+
+Training uses JPEG augmentation (quality factors 40–95, seeded deterministically) to teach the model to detect AI signals through typical web compression. The train/test split is deterministic (last 20% by sorted filename) and the test dirs are never used as training dependencies.
+
+**Held-out test performance (n = 1,203)**
+
+| Metric | Value |
+|--------|-------|
+| AUC | 0.939 |
+| Recall | 82.5% |
+| Precision | 88.9% |
+| FPR | 9.3% |
+| F1 | 85.6% |
+
+Per-generator recall: SDXL 95%, DALL·E 3 91%, SD3 85%, Grok Aurora 81%, SD2.1 80%, Midjourney 76%, Kaggle-AI 73%  
+Real FPR by source: SUN397 6.0%, COCO 6.5%, Kaggle-real 14.7%
+
+Weight: the network output probability is mapped directly to confidence and can reach **0.90** (Definite) for strong signals.
+
+**Known gaps:** Flux, Adobe Firefly, and stylised/artistic AI images have no training data and are not reliably detectable via this layer. L1 and L2 remain the primary signals for those generators.
+
 ---
 
 ## Confidence scoring and badge levels
@@ -126,7 +168,7 @@ The default display threshold is 0.45 (Possible AI and above). Users can lower o
 
 **Social media metadata stripping.** Twitter/X, Instagram, and Facebook remove EXIF, XMP, IPTC, and C2PA data on upload. For images shared on these platforms, only L3 and L4 are available — and L3/L4 are weaker and slower.
 
-**FLUX.1 and untagged SDXL.** These models produce images with pixel statistics that overlap significantly with real photographs in browser-decoded colour space. Without a metadata tag or a recognisable CDN URL, Lens will not reliably flag them. This is an active research area.
+**FLUX.1, Adobe Firefly, and untagged artistic AI.** FLUX.1 and Firefly are not included in the L6 training set and are not reliably detectable without metadata or a recognisable CDN URL. Stylised and artistic AI images (smooth gradients, low texture) produce low NPR residual variance and score below the detection threshold — the model was trained primarily on photorealistic AI imagery. These are active gaps.
 
 **CORS and opaque responses.** When a page embeds a cross-origin image with restrictive CORS headers and no CORS response headers, the service worker receives an opaque response with zeroed pixel data. L3 and L4 are unavailable; L1 and L2 still run.
 
@@ -155,6 +197,8 @@ The privacy model is non-negotiable: no data leaves the browser.
 - Mallet et al. (2025), *Forensic Detection of AI-Generated Images via Block Noise Correlation*
 - Fernandez et al. (2023), *The Stable Signature: Rooting Watermarks in Latent Diffusion Models*
 - Google SynthID: [deepmind.google/synthid](https://deepmind.google/technologies/synthid/)
+- DVC — Data Version Control: [dvc.org](https://dvc.org/)
+- TensorFlow.js: [tensorflow.org/js](https://www.tensorflow.org/js)
 
 ---
 
