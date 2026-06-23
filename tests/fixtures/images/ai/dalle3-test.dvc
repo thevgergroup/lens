@@ -1,0 +1,6 @@
+outs:
+- md5: b7cdc2286199a34b1511275c130cffa3.dir
+  size: 24796107
+  nfiles: 80
+  hash: md5
+  path: dalle3-test

@@ -1,0 +1,6 @@
+outs:
+- md5: f0ffcc29fefbea277899056de4256e49.dir
+  size: 95398502
+  nfiles: 200
+  hash: md5
+  path: sun397-test

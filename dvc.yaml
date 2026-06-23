@@ -68,24 +68,23 @@ stages:
       .venv/bin/python3 tests/fixtures/eval-forensic.py
       --img-size ${train.img_size}
       --threshold ${train.threshold}
-      --max-per-dir ${eval.max_per_dir}
       --seed ${eval.seed}
     deps:
       - tests/fixtures/eval-forensic.py
       - lib/forensic-ai-detector.keras
-      - tests/fixtures/images/ai/dalle3
-      - tests/fixtures/images/ai/defactify
-      - tests/fixtures/images/ai/grok
-      - tests/fixtures/images/ai/midjourney
-      - tests/fixtures/images/ai/kaggle
-      - tests/fixtures/images/real/coco
-      - tests/fixtures/images/real/sun397
-      - tests/fixtures/images/real/twitter
-      - tests/fixtures/images/real/kaggle
+      - tests/fixtures/images/ai/dalle3-test
+      - tests/fixtures/images/ai/defactify/sd21-test
+      - tests/fixtures/images/ai/defactify/sd3-test
+      - tests/fixtures/images/ai/defactify/sdxl-test
+      - tests/fixtures/images/ai/grok-test
+      - tests/fixtures/images/ai/midjourney-test
+      - tests/fixtures/images/ai/kaggle-test
+      - tests/fixtures/images/real/coco-test
+      - tests/fixtures/images/real/sun397-test
+      - tests/fixtures/images/real/kaggle-test
     params:
       - train.img_size
       - train.threshold
-      - eval.max_per_dir
       - eval.seed
     metrics:
       - lib/forensic-eval.json:
