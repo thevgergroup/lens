@@ -195,17 +195,19 @@ def print_table(rows, threshold):
     ai_gens   = [(g, [r for r in rows if r[1] == g]) for g in generators if rows[[r[1] for r in rows].index(g)][2] == 1]
     real_gens = [(g, [r for r in rows if r[1] == g]) for g in generators if rows[[r[1] for r in rows].index(g)][2] == 0]
 
-    print(f"\n  {'Generator':<35} {'N':>5}  {'Recall':>7}  {'Prec':>7}  {'F1':>6}")
-    print("  " + "-" * 62)
+    # Precision and FPR can't be computed per-generator in isolation —
+    # they require FP/TN counts which only exist across the full real set.
+    print(f"\n  {'Generator':<35} {'N':>5}  {'Recall':>7}  {'F1':>6}  {'TP':>4}  {'FN':>4}")
+    print("  " + "-" * 65)
     for gen, grp in sorted(ai_gens, key=lambda x: -metrics_at([r[2] for r in x[1]], [r[3] for r in x[1]], threshold)["recall"]):
         m2 = metrics_at([r[2] for r in grp], [r[3] for r in grp], threshold)
-        print(f"  {gen:<35} {len(grp):>5}  {m2['recall']:>7.3f}  {m2['precision']:>7.3f}  {m2['f1']:>6.3f}")
+        print(f"  {gen:<35} {len(grp):>5}  {m2['recall']:>7.3f}  {m2['f1']:>6.3f}  {m2['tp']:>4}  {m2['fn']:>4}")
 
-    print(f"\n  {'Real source':<35} {'N':>5}  {'FPR':>7}  {'TNR':>7}")
-    print("  " + "-" * 50)
+    print(f"\n  {'Real source':<35} {'N':>5}  {'FPR':>7}  {'TNR':>7}  {'FP':>4}  {'TN':>4}")
+    print("  " + "-" * 62)
     for gen, grp in sorted(real_gens, key=lambda x: metrics_at([r[2] for r in x[1]], [r[3] for r in x[1]], threshold)["fpr"]):
         m2 = metrics_at([r[2] for r in grp], [r[3] for r in grp], threshold)
-        print(f"  {gen:<35} {len(grp):>5}  {m2['fpr']:>7.3f}  {1-m2['fpr']:>7.3f}")
+        print(f"  {gen:<35} {len(grp):>5}  {m2['fpr']:>7.3f}  {1-m2['fpr']:>7.3f}  {m2['fp']:>4}  {m2['tn']:>4}")
 
 
 def main():
