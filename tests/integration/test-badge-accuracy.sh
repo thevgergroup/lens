@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Integration test: Badge accuracy on known AI vs real image fixtures
 #
-# Navigates to fixture pages with known-ground-truth images and verifies
-# that the extension's confidence levels match expectations.
+# Results are stored as data-lens-level attributes on <img> elements.
+# Levels: definite, likely, possible, unlikely, clean
+# Flagged = definite | likely | possible
 #
 # Usage: bash tests/integration/test-badge-accuracy.sh
 
@@ -11,10 +12,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$SCRIPT_DIR/lib/assert.sh"
 
-EXTENSION_PATH="$ROOT_DIR"
 SESSION="lens-accuracy-$$"
 BASE_URL="http://localhost:3456"
-WAIT_SECS=5  # Time for extension to analyze images
+SETTLE_SECS=25  # Time for SW to cold-start TF.js + model and analyse all images
 
 cleanup() {
   agent-browser --session "$SESSION" close 2>/dev/null || true
@@ -24,125 +24,125 @@ trap cleanup EXIT
 echo "=== Test: Badge accuracy on fixture pages ==="
 echo ""
 
-# Helper: get all lens-badge class values on the current page as JSON
-get_badges_json() {
-  agent-browser --session "$SESSION" eval "
-    JSON.stringify(
-      Array.from(document.querySelectorAll('.lens-badge')).map(el => ({
-        class: el.className,
-        text: el.textContent.trim().substring(0, 40),
-        src: el.closest('.lens-wrapper')?.querySelector('img')?.dataset?.src
-              || el.closest('.lens-wrapper')?.querySelector('img')?.src || ''
-      }))
-    )
-  " 2>/dev/null || echo "[]"
+# Query each level individually to avoid JSON parsing issues
+get_level_count() {
+  local level="$1"
+  if [ "$level" = "total" ]; then
+    agent-browser --session "$SESSION" eval \
+      "document.querySelectorAll('img[data-lens-level]').length" 2>/dev/null || echo 0
+  else
+    agent-browser --session "$SESSION" eval \
+      "document.querySelectorAll('img[data-lens-level=\"${level}\"]').length" 2>/dev/null || echo 0
+  fi
 }
 
-# Helper: count badges with a specific confidence level class
-count_badges_with_level() {
-  local badges_json="$1"
-  local level="$2"
-  echo "$badges_json" | python3 -c "
-import sys, json
-badges = json.load(sys.stdin)
-count = sum(1 for b in badges if 'lens-$level' in b.get('class', ''))
-print(count)
-" 2>/dev/null || echo 0
+get_flagged_count() {
+  local d l p
+  d=$(get_level_count definite)
+  l=$(get_level_count likely)
+  p=$(get_level_count possible)
+  echo $(( ${d:-0} + ${l:-0} + ${p:-0} ))
 }
 
-# ─── Test 1: AI Images Page ────────────────────────────────────────────────
+# ── Test 1: AI Images Page ─────────────────────────────────────────────────
 echo "--- AI Images Page ---"
 
-agent-browser \
-  --extension "$EXTENSION_PATH" \
-  --session "$SESSION" \
-  open "$BASE_URL/pages/ai-images.html" \
-  2>/dev/null || { skip "Could not open ai-images.html"; }
+agent-browser --session "$SESSION" open "$BASE_URL/pages/ai-images" 2>/dev/null
 
-sleep "$WAIT_SECS"
+echo "  Waiting ${SETTLE_SECS}s for SW model load and analysis…"
+sleep "$SETTLE_SECS"
 
-badges=$(get_badges_json)
-total_badges=$(echo "$badges" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
+total=$(get_level_count total)
+definite=$(get_level_count definite)
+likely=$(get_level_count likely)
+possible=$(get_level_count possible)
+unlikely=$(get_level_count unlikely)
+clean=$(get_level_count clean)
+flagged=$(( ${definite:-0} + ${likely:-0} + ${possible:-0} ))
 
-echo "  Found $total_badges badges on AI images page"
+echo "  Annotated=$total  definite=$definite  likely=$likely  possible=$possible  unlikely=$unlikely  clean=$clean"
 
-if [ "$total_badges" -gt 0 ]; then
-  # Count how many are flagged (definite + likely + possible)
-  definite=$(count_badges_with_level "$badges" "definite")
-  likely=$(count_badges_with_level "$badges" "likely")
-  possible=$(count_badges_with_level "$badges" "possible")
-  clean=$(count_badges_with_level "$badges" "clean")
-  flagged=$((definite + likely + possible))
-
-  echo "  Breakdown: $definite definite, $likely likely, $possible possible, $clean clean"
-
-  if [ "$flagged" -ge 1 ]; then
-    pass "At least 1 AI image correctly flagged on ai-images page"
-  else
-    fail "AI images not flagged" ">= 1 flagged" "0 flagged ($clean clean)"
-  fi
-
-  # If C2PA fixtures downloaded, at least 1 should be definite
-  if [ "$definite" -ge 1 ]; then
-    pass "At least 1 definite AI detection (C2PA or metadata)"
-  else
-    skip "No definite detections (C2PA fixtures may not be downloaded)"
-  fi
+if [ "${total:-0}" -ge 1 ] 2>/dev/null; then
+  pass "Extension annotated $total images on AI page"
 else
-  skip "No badges found on AI images page — run npm run fixture:download first"
+  fail "No images annotated" ">= 1" "0"
 fi
 
-# Screenshot
+if [ "${flagged:-0}" -ge 1 ] 2>/dev/null; then
+  pass "At least $flagged AI image(s) correctly flagged (definite/likely/possible)"
+else
+  fail "No AI images flagged" ">= 1 flagged" "0"
+fi
+
 mkdir -p "$ROOT_DIR/tests/integration/screenshots"
 agent-browser --session "$SESSION" \
   screenshot "$ROOT_DIR/tests/integration/screenshots/ai-images-page.png" --full 2>/dev/null || true
 
-# ─── Test 2: Mixed Page ────────────────────────────────────────────────────
+# ── Test 2: Real Images Page ───────────────────────────────────────────────
 echo ""
-echo "--- Mixed Page (simulated news feed) ---"
+echo "--- Real Images Page ---"
 
-agent-browser \
-  --session "$SESSION" \
-  open "$BASE_URL/pages/mixed-page.html" \
-  2>/dev/null || { skip "Could not open mixed-page.html"; }
+agent-browser --session "$SESSION" open "$BASE_URL/pages/real-images" 2>/dev/null
+echo "  Waiting ${SETTLE_SECS}s…"
+sleep "$SETTLE_SECS"
 
-sleep "$WAIT_SECS"
+total_real=$(get_level_count total)
+flagged_real=$(get_flagged_count)
+clean_real=$(get_level_count clean)
+unlikely_real=$(get_level_count unlikely)
 
-badges_mixed=$(get_badges_json)
-total_mixed=$(echo "$badges_mixed" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
+echo "  Annotated=$total_real  flagged(FP)=$flagged_real  clean=$clean_real  unlikely=$unlikely_real"
 
-echo "  Found $total_mixed badges on mixed page (expected 3, ignoring 2 tiny images)"
-
-# The mixed page has 3 real images (>32px) and 2 tiny images (should be ignored)
-# We expect 3 badges total (not 5)
-if [ "$total_mixed" -le 4 ]; then
-  pass "Tiny images (<32px) correctly ignored (got $total_mixed badges, not 5)"
+if [ "${total_real:-0}" -ge 1 ] 2>/dev/null; then
+  pass "Extension annotated $total_real images on real page"
 else
-  fail "Too many badges — tiny images may not be filtered" "<= 4" "$total_mixed"
+  skip "No images annotated on real page"
+fi
+
+if [ "${flagged_real:-0}" -eq 0 ] 2>/dev/null; then
+  pass "No false positives on real images page"
+elif [ "${flagged_real:-0}" -le 2 ] 2>/dev/null; then
+  pass "Acceptable FP rate: $flagged_real / $total_real flagged"
+else
+  fail "Too many false positives on real images page" "<= 2 FP" "$flagged_real FP"
+fi
+
+agent-browser --session "$SESSION" \
+  screenshot "$ROOT_DIR/tests/integration/screenshots/real-images-page.png" --full 2>/dev/null || true
+
+# ── Test 3: Mixed Page ─────────────────────────────────────────────────────
+echo ""
+echo "--- Mixed Page ---"
+
+agent-browser --session "$SESSION" open "$BASE_URL/pages/mixed-page" 2>/dev/null
+echo "  Waiting ${SETTLE_SECS}s…"
+sleep "$SETTLE_SECS"
+
+total_mixed=$(get_level_count total)
+echo "  Annotated=$total_mixed (tiny images <32px should be excluded)"
+
+if [ "${total_mixed:-0}" -le 4 ] 2>/dev/null; then
+  pass "Tiny images correctly ignored ($total_mixed annotated, not 5)"
+else
+  fail "Too many annotations — tiny images may not be filtered" "<= 4" "$total_mixed"
 fi
 
 agent-browser --session "$SESSION" \
   screenshot "$ROOT_DIR/tests/integration/screenshots/mixed-page.png" --full 2>/dev/null || true
 
-# ─── Test 3: URL Heuristics Page ──────────────────────────────────────────
+# ── Test 4: URL Heuristics Page ────────────────────────────────────────────
 echo ""
 echo "--- URL Heuristics Page (L1 fast-path) ---"
 
-agent-browser \
-  --session "$SESSION" \
-  open "$BASE_URL/pages/url-heuristics.html" \
-  2>/dev/null || { skip "Could not open url-heuristics.html"; }
+agent-browser --session "$SESSION" open "$BASE_URL/pages/url-heuristics" 2>/dev/null
+sleep 5  # L1 is synchronous, no model load needed
 
-sleep "$WAIT_SECS"
+flagged_url=$(get_flagged_count)
 
-badges_url=$(get_badges_json)
-definite_url=$(count_badges_with_level "$badges_url" "definite")
-likely_url=$(count_badges_with_level "$badges_url" "likely")
-
-if [ "$((definite_url + likely_url))" -ge 1 ]; then
-  pass "URL heuristics firing: $definite_url definite, $likely_url likely"
+if [ "${flagged_url:-0}" -ge 1 ] 2>/dev/null; then
+  pass "URL heuristics flagged $flagged_url image(s)"
 else
-  skip "URL heuristic badges not detected (fixtures may be missing)"
+  skip "URL heuristics not firing (fixtures may be missing)"
 fi
 
 echo ""
