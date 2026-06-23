@@ -10,3 +10,7 @@ train:
   seed: 42
   img_size: 224
   threshold: 0.50
+
+eval:
+  max_per_dir: 200
+  seed: 42
