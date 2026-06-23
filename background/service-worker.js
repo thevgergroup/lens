@@ -90,41 +90,61 @@ getForensicModel();
 // ── Preprocessing ─────────────────────────────────────────────────────────────
 
 // NPR (Neighboring Pixel Residual) transform.
-// Downsample 2x nearest-neighbor then upsample 2x, subtract from original.
-// Isolates upsampling artifacts common to all generative models (GANs, diffusion).
-// Content is suppressed; forensic artifacts are amplified.
-// Mirrors the Python apply_npr() in train-forensic-encoder.py exactly.
+// Mirrors train-forensic-encoder.py load_image() + apply_npr() exactly:
+//   1. Resize source so short-side = outSize+32 (preserving aspect ratio)
+//   2. Center-crop to outSize×outSize
+//   3. For each pixel (y,x) in the 224×224 crop, subtract the value at
+//      (y&~1, x&~1) — the nearest-neighbor 2x down/up-sample reconstruction.
+//   4. residual = (pixel - reconstructed) * (2/3)
+// The NPR even-snap MUST happen in outSize coordinates, not source coordinates.
 function applyNPR(rgba, width, height, outSize) {
-  const buf = new Float32Array(outSize * outSize * 3);
-  const xScale = width  / outSize;
-  const yScale = height / outSize;
+  const PRESCALE = outSize + 32; // 256 for outSize=224 — matches Python
 
+  // Step 1: resize so short side = PRESCALE, preserving aspect ratio
+  const scale = PRESCALE / Math.min(width, height);
+  const scaledW = Math.max(outSize, Math.round(width  * scale));
+  const scaledH = Math.max(outSize, Math.round(height * scale));
+
+  // Step 2: compute bilinear crop window (center crop to outSize×outSize)
+  const cropX = Math.floor((scaledW - outSize) / 2);
+  const cropY = Math.floor((scaledH - outSize) / 2);
+
+  // Bilinear resample source → outSize×outSize crop in one pass.
+  // For each output pixel (y, x), compute its position in the source image.
+  const xScaleInv = width  / scaledW;
+  const yScaleInv = height / scaledH;
+
+  const resized = new Float32Array(outSize * outSize * 3);
   for (let y = 0; y < outSize; y++) {
     for (let x = 0; x < outSize; x++) {
-      // Bilinear sample from source
-      const srcX = x * xScale, srcY = y * yScale;
+      const srcX = (x + cropX) * xScaleInv;
+      const srcY = (y + cropY) * yScaleInv;
       const x0 = Math.floor(srcX), y0 = Math.floor(srcY);
-      const x1 = Math.min(x0 + 1, width - 1);
+      const x1 = Math.min(x0 + 1, width  - 1);
       const y1 = Math.min(y0 + 1, height - 1);
       const dx = srcX - x0, dy = srcY - y0;
-
-      // Nearest-neighbor 2x downsample+upsample: snap to even pixel
-      const nx = (x0 & ~1), ny = (y0 & ~1);
-      const nx1 = Math.min(nx, width - 1), ny1 = Math.min(ny, height - 1);
-
       const base = (y * outSize + x) * 3;
       for (let c = 0; c < 3; c++) {
         const i00 = (y0 * width + x0) * 4 + c;
         const i10 = (y0 * width + x1) * 4 + c;
         const i01 = (y1 * width + x0) * 4 + c;
         const i11 = (y1 * width + x1) * 4 + c;
-        const pixel = (rgba[i00]*(1-dx)*(1-dy) + rgba[i10]*dx*(1-dy) +
-                       rgba[i01]*(1-dx)*dy      + rgba[i11]*dx*dy) / 255;
+        resized[base + c] = (rgba[i00]*(1-dx)*(1-dy) + rgba[i10]*dx*(1-dy) +
+                              rgba[i01]*(1-dx)*dy     + rgba[i11]*dx*dy) / 255;
+      }
+    }
+  }
 
-        const ni = (ny1 * width + nx1) * 4 + c;
-        const recon = rgba[ni] / 255;
-
-        buf[base + c] = (pixel - recon) * (2 / 3);
+  // Step 3: NPR residual on the cropped outSize×outSize image.
+  // ys = y & ~1, xs = x & ~1  (mirrors Python `np.arange(h) & ~1`)
+  const buf = new Float32Array(outSize * outSize * 3);
+  for (let y = 0; y < outSize; y++) {
+    for (let x = 0; x < outSize; x++) {
+      const ny = y & ~1, nx = x & ~1;
+      const base  = (y  * outSize + x)  * 3;
+      const rbase = (ny * outSize + nx) * 3;
+      for (let c = 0; c < 3; c++) {
+        buf[base + c] = (resized[base + c] - resized[rbase + c]) * (2 / 3);
       }
     }
   }

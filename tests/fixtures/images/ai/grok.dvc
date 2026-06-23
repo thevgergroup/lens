@@ -1,0 +1,6 @@
+outs:
+- md5: e37bf741351bbf0079e2132d3251508e.dir
+  size: 41176479
+  nfiles: 311
+  hash: md5
+  path: grok

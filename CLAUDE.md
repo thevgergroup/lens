@@ -105,6 +105,87 @@ Served from `tests/fixtures/` at `http://localhost:3456`:
 ### Screenshots
 Integration tests save screenshots to `tests/integration/screenshots/` for visual review.
 
+## ML Model Training (L6 Forensic NPR Encoder)
+
+Training is managed by DVC — use `dvc repro` not `python3` directly. DVC checks whether any dep (script, data, `params.yaml`) changed and skips stages that are already cached.
+
+### Setup
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-train.txt
+dvc pull                         # fetch training images from S3 (~2GB)
+```
+
+### Train
+```bash
+dvc repro augment-forensic       # regenerate JPEG-augmented AI images (QF=40–95)
+dvc repro train-forensic         # retrain (skips if nothing changed)
+dvc repro train-forensic --force # force retrain
+dvc repro eval-forensic          # run held-out eval (auto-runs after retrain)
+dvc metrics show                 # print metrics from forensic-metrics.json + forensic-eval.json
+```
+
+### Experiment tracking
+```bash
+dvc exp run                                  # run with current params.yaml
+dvc exp run -S train.epochs=20               # override param without editing file
+dvc exp show                                 # compare all experiments side-by-side
+dvc exp diff                                 # diff metrics of last two experiments
+```
+
+### Pipeline definition
+- `dvc.yaml` — three stages: `augment-forensic` → `train-forensic` → `eval-forensic`
+- `params.yaml` — hyperparameters: `augment.*`, `train.*`, `eval.*`
+- `lib/forensic-metrics.json` — training val-set metrics (AUC, threshold sweep, data_hash)
+- `lib/forensic-eval.json` — held-out eval metrics (overall + per-generator breakdown)
+
+### Data split
+Training dirs and held-out test dirs are siblings — `dalle3/` trains, `dalle3-test/` evaluates. The split was created once by `tests/fixtures/split-test-set.py` (last 20% by sorted filename). Never add `*-test` dirs as training deps.
+
+| Source | Train | Test |
+|--------|-------|------|
+| ai/dalle3 | 320 | 80 |
+| ai/defactify/sd{21,3,xl} | 320 each | 80 each |
+| ai/grok | 248 | 62 |
+| ai/midjourney | 320 | 80 |
+| ai/kaggle | 443 | 110 |
+| real/coco | 800 | 200 |
+| real/sun397 | 800 | 200 |
+| real/kaggle | 927 | 231 |
+
+### Current model performance (forensic-npr_09fd14ad)
+Held-out test dirs (n=1,203):
+
+| Metric | Value |
+|--------|-------|
+| AUC | 0.939 |
+| Recall | 82.5% |
+| Precision | 88.9% |
+| FPR | 9.3% |
+| F1 | 85.6% |
+
+Per-generator recall: sdxl 95%, dalle3 91%, sd3 85%, grok 81%, sd21 80%, midjourney 76%, kaggle-ai 73%  
+Real FPR: sun397 6%, coco 6.5%, kaggle-real 14.7%
+
+Known gaps: Flux, Firefly, and misc artistic AI styles have no training data — not detectable via NPR.
+
+### WandB / DVC naming convention
+Run names: `forensic-npr_{data-hash}_{epochs}e_{lr}lr_{seed}s`
+The `data-hash` is the MD5 of all `.dvc` pointer files — every wandb run and DVC experiment is traceable to the exact dataset snapshot that produced it.
+
+### Data
+All image dirs under `tests/fixtures/images/` are DVC-tracked (`*.dvc` pointer files). The S3 remote is `s3://lens-training-data/dvc` (AWS profile `vger`). To add a new source:
+```bash
+dvc add tests/fixtures/images/ai/<newsource>
+dvc add tests/fixtures/images/ai/<newsource>-test  # after splitting 20% manually
+dvc push
+# add train dir to augment-forensic + train-forensic deps in dvc.yaml
+# add test dir to eval-forensic deps in dvc.yaml
+```
+
+### Python environment note
+The `.venv/` directory is gitignored. `tensorflow_decision_forests` is **not** installed — it has an irreconcilable protobuf conflict with TF 2.19. The training script mocks it out via `sys.modules` before the `tensorflowjs` import.
+
 ## UI & Styling
 
 ### Design Language

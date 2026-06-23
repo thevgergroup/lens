@@ -1,0 +1,16 @@
+augment:
+  jpeg_quality_min: 40
+  jpeg_quality_max: 95
+  seed: 42
+
+train:
+  epochs: 15
+  batch_size: 32
+  learning_rate: 0.001
+  seed: 42
+  img_size: 224
+  threshold: 0.50
+
+eval:
+  max_per_dir: 200
+  seed: 42

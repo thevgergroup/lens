@@ -1,0 +1,91 @@
+stages:
+  augment-forensic:
+    cmd: >
+      .venv/bin/python3 tests/fixtures/augment-forensic.py
+      --jpeg-min ${augment.jpeg_quality_min}
+      --jpeg-max ${augment.jpeg_quality_max}
+      --seed ${augment.seed}
+    deps:
+      - tests/fixtures/augment-forensic.py
+      - tests/fixtures/images/ai/defactify
+      - tests/fixtures/images/ai/dalle3
+      - tests/fixtures/images/ai/midjourney
+      - tests/fixtures/images/ai/grok
+      - tests/fixtures/images/ai/kaggle
+      - tests/fixtures/images/ai/training
+    params:
+      - augment.jpeg_quality_min
+      - augment.jpeg_quality_max
+      - augment.seed
+    outs:
+      - tests/fixtures/images/ai/augmented:
+          cache: true
+          persist: false
+
+  train-forensic:
+    cmd: >
+      .venv/bin/python3 tests/fixtures/train-forensic-encoder.py
+      --epochs ${train.epochs}
+      --batch ${train.batch_size}
+      --lr ${train.learning_rate}
+      --seed ${train.seed}
+      --img-size ${train.img_size}
+      --threshold ${train.threshold}
+    deps:
+      - tests/fixtures/train-forensic-encoder.py
+      - tests/fixtures/images/ai/augmented
+      - tests/fixtures/images/ai/defactify
+      - tests/fixtures/images/ai/dalle3
+      - tests/fixtures/images/ai/midjourney
+      - tests/fixtures/images/ai/grok
+      - tests/fixtures/images/ai/kaggle
+      - tests/fixtures/images/ai/training
+      - tests/fixtures/images/real/coco
+      - tests/fixtures/images/real/sun397
+      - tests/fixtures/images/real/twitter
+      - tests/fixtures/images/real/kaggle
+      - tests/fixtures/images/real/training
+    params:
+      - train.epochs
+      - train.batch_size
+      - train.learning_rate
+      - train.seed
+      - train.img_size
+      - train.threshold
+    outs:
+      - lib/forensic-ai-detector.keras:
+          cache: true
+          persist: false
+      - lib/forensic-tfjs:
+          cache: true
+          persist: false
+    metrics:
+      - lib/forensic-metrics.json:
+          cache: false
+
+  eval-forensic:
+    cmd: >
+      .venv/bin/python3 tests/fixtures/eval-forensic.py
+      --img-size ${train.img_size}
+      --threshold ${train.threshold}
+      --seed ${eval.seed}
+    deps:
+      - tests/fixtures/eval-forensic.py
+      - lib/forensic-ai-detector.keras
+      - tests/fixtures/images/ai/dalle3-test
+      - tests/fixtures/images/ai/defactify/sd21-test
+      - tests/fixtures/images/ai/defactify/sd3-test
+      - tests/fixtures/images/ai/defactify/sdxl-test
+      - tests/fixtures/images/ai/grok-test
+      - tests/fixtures/images/ai/midjourney-test
+      - tests/fixtures/images/ai/kaggle-test
+      - tests/fixtures/images/real/coco-test
+      - tests/fixtures/images/real/sun397-test
+      - tests/fixtures/images/real/kaggle-test
+    params:
+      - train.img_size
+      - train.threshold
+      - eval.seed
+    metrics:
+      - lib/forensic-eval.json:
+          cache: false

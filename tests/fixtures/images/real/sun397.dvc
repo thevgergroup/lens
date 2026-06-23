@@ -1,0 +1,6 @@
+outs:
+- md5: 7a4440147804fabeb0b5999a10da9ed4.dir
+  size: 588984483
+  nfiles: 1000
+  hash: md5
+  path: sun397

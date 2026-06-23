@@ -72,6 +72,7 @@ jobs:
   build-safari:
     name: Build Safari (macOS)
     needs: test
+    if: false  # disabled until Safari MV3 service worker + TF.js model support is verified
     runs-on: macos-15
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -294,7 +295,7 @@ jobs:
 
   release:
     name: Create GitHub release
-    needs: [build, build-safari, publish-chrome]
+    needs: [build, publish-chrome]
     if: always() && needs.build.result == 'success' && needs.publish-chrome.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -306,13 +307,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: lens-${{ needs.build.outputs.version }}
-          path: dist/
-
-      - name: Download Safari artifact
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: lens-safari-${{ needs.build.outputs.version }}
           path: dist/
 
       - name: Create release
@@ -328,13 +322,9 @@ jobs:
             ### Chrome, Edge, Brave
             Download **lens-${{ needs.build.outputs.version }}.zip**, unzip it, then load via `chrome://extensions/` → Developer mode → Load unpacked.
 
-            ### Safari (macOS)
-            Download **lens-${{ needs.build.outputs.version }}-mac.dmg**, open it, drag Lens to Applications, then enable it in Safari → Settings → Extensions.
-
             ---
             See [WHITEPAPER.md](https://github.com/thevgergroup/lens/blob/main/WHITEPAPER.md) for technical details.
           files: |
             dist/lens-${{ needs.build.outputs.version }}.zip
             dist/lens-${{ needs.build.outputs.version }}.xpi
-            dist/lens-${{ needs.build.outputs.version }}-mac.dmg
           fail_on_unmatched_files: false

@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # Integration test: Verify the extension loads and its service worker registers
 #
-# Uses agent-browser --extension to load the LENS extension into Chrome,
-# then verifies the extension is active via chrome://extensions page inspection.
-#
 # Usage: bash tests/integration/test-extension-loads.sh
 
 set -euo pipefail
@@ -14,7 +11,6 @@ source "$SCRIPT_DIR/lib/assert.sh"
 echo "=== Test: Extension loads and registers ==="
 echo ""
 
-EXTENSION_PATH="$ROOT_DIR"
 SESSION="lens-test-$$"
 
 cleanup() {
@@ -22,76 +18,56 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Step 1: Open a page with the extension loaded
 echo "Loading extension and navigating to fixture server..."
 output=$(agent-browser \
-  --extension "$EXTENSION_PATH" \
   --session "$SESSION" \
-  --headed false \
-  open "http://localhost:3456/pages/ai-images.html" \
+  open "http://localhost:3456/pages/ai-images" \
   2>&1) || true
 
-assert_contains \
-  "Browser opened without error" \
-  "$output" \
-  "" # just check it didn't crash — empty string is always found
+assert_contains "Browser opened without error" "$output" ""
 
-# Step 2: Wait for page load and content script injection
-sleep 2
+# Wait for content script injection and SW to start analysis
+sleep 3
 
-# Step 3: Check for .lens-badge elements injected by content script
-badge_count=$(agent-browser \
-  --session "$SESSION" \
-  get count ".lens-badge" \
-  2>/dev/null) || badge_count="0"
+annotated=$(agent-browser --session "$SESSION" eval "
+  document.querySelectorAll('img[data-lens-level]').length
+" 2>/dev/null || echo 0)
 
-# We expect at least 1 badge on the ai-images fixture page
-# (some may still be pending/scanning)
-echo ""
-echo "Badge count found: $badge_count"
+echo "  Annotated images after 3s: $annotated"
 
-if [ "$badge_count" -ge 1 ] 2>/dev/null; then
-  pass "Content script injected at least 1 .lens-badge element"
+if [ "$annotated" -ge 1 ] 2>/dev/null; then
+  pass "Content script annotated at least 1 image with data-lens-level"
 else
-  skip "No badges yet (extension may need more time or fixtures missing)"
+  skip "No annotations yet — waiting longer for SW model load"
 fi
 
-# Step 4: Wait longer for analysis to complete and check again
-sleep 4
-badge_count_final=$(agent-browser \
-  --session "$SESSION" \
-  get count ".lens-badge" \
-  2>/dev/null) || badge_count_final="0"
+# SW cold-start loads TF.js + model (~5–15s) — wait for analysis to settle
+sleep 20
 
-echo "Badge count after 4s: $badge_count_final"
+annotated_final=$(agent-browser --session "$SESSION" eval "document.querySelectorAll('img[data-lens-level]').length" 2>/dev/null || echo 0)
+definite=$(agent-browser --session "$SESSION" eval "document.querySelectorAll('img[data-lens-level=\"definite\"]').length" 2>/dev/null || echo 0)
+likely=$(agent-browser --session "$SESSION" eval "document.querySelectorAll('img[data-lens-level=\"likely\"]').length" 2>/dev/null || echo 0)
+possible=$(agent-browser --session "$SESSION" eval "document.querySelectorAll('img[data-lens-level=\"possible\"]').length" 2>/dev/null || echo 0)
+flagged=$((${definite:-0} + ${likely:-0} + ${possible:-0}))
 
-if [ "$badge_count_final" -ge 1 ] 2>/dev/null; then
-  pass "Badges present after analysis completes"
+echo "  Results: annotated=$annotated_final definite=$definite likely=$likely possible=$possible flagged=$flagged"
+
+if [ "$annotated_final" -ge 1 ] 2>/dev/null; then
+  pass "Extension annotated $annotated_final images after analysis"
 else
-  skip "Badges not found — check that fixtures are downloaded (npm run fixture:download)"
+  fail "No images annotated" ">= 1 annotated" "0"
 fi
 
-# Step 5: Verify a badge has expected CSS classes (not just pending)
-badge_classes=$(agent-browser \
-  --session "$SESSION" \
-  get attr class ".lens-badge" \
-  2>/dev/null) || badge_classes=""
+if [ "$flagged" -ge 1 ] 2>/dev/null; then
+  pass "At least $flagged AI image(s) flagged (definite/likely/possible)"
+else
+  fail "No AI images flagged on ai-images fixture page" ">= 1 flagged" "0"
+fi
 
-assert_contains \
-  ".lens-badge element has lens- prefixed class" \
-  "$badge_classes" \
-  "lens-"
-
-# Step 6: Take a screenshot for visual verification
-SCREENSHOT_DIR="$ROOT_DIR/tests/integration/screenshots"
-mkdir -p "$SCREENSHOT_DIR"
-agent-browser \
-  --session "$SESSION" \
-  screenshot "$SCREENSHOT_DIR/test-extension-loads.png" \
-  --full \
-  2>/dev/null || true
-
-echo ""
-echo "Screenshot saved: tests/integration/screenshots/test-extension-loads.png"
+mkdir -p "$ROOT_DIR/tests/integration/screenshots"
+agent-browser --session "$SESSION" \
+  screenshot "$ROOT_DIR/tests/integration/screenshots/test-extension-loads.png" \
+  --full 2>/dev/null || true
+echo "  Screenshot: tests/integration/screenshots/test-extension-loads.png"
 
 print_summary

@@ -1,0 +1,6 @@
+outs:
+- md5: 302ca472b9c05d05818b025930552e45.dir
+  size: 20047352
+  nfiles: 80
+  hash: md5
+  path: midjourney-test

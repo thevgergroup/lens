@@ -1,0 +1,6 @@
+outs:
+- md5: 408acc8cd6b968103c494e98d7395595.dir
+  size: 145526260
+  nfiles: 400
+  hash: md5
+  path: dalle3

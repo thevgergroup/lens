@@ -1,0 +1,6 @@
+outs:
+- md5: c25e6dfdaa581c7a13afdbe8e72a78a7.dir
+  size: 8119320
+  nfiles: 62
+  hash: md5
+  path: grok-test

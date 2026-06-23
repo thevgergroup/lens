@@ -1,0 +1,6 @@
+outs:
+- md5: 8b7d7c8d54e7b1a64145f2a37625f416.dir
+  size: 97122682
+  nfiles: 400
+  hash: md5
+  path: midjourney

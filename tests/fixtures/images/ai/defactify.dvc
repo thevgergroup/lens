@@ -1,0 +1,6 @@
+outs:
+- md5: fee878db5567a06b5f5687447d326cbc.dir
+  size: 247770763
+  nfiles: 1440
+  hash: md5
+  path: defactify
